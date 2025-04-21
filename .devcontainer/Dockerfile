@@ -29,15 +29,15 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 RUN curl -fsSL https://deb.nodesource.com/setup_lts.x | bash - \
     && apt-get install -y nodejs
 
-# Install Go tools
+# Install Go tools and golang-migrate (v4.18.2)
 RUN go install golang.org/x/tools/gopls@latest && \
     go install github.com/go-delve/delve/cmd/dlv@latest && \
     go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest && \
-    curl -fL https://github.com/golang-migrate/migrate/releases/download/v4.17.2/migrate.linux-amd64.tar.gz -o migrate.tar.gz && \
+    curl -fL https://github.com/golang-migrate/migrate/releases/download/v4.18.2/migrate.linux-amd64.tar.gz -o migrate.tar.gz && \
     tar -xvzf migrate.tar.gz && \
-    mv migrate /usr/local/bin/migrate && chmod +x /usr/local/bin/migrate && \
+    chmod +x migrate && \
+    mv migrate /usr/local/bin/migrate && \
     rm migrate.tar.gz
-
 
 # Set up environment
 ENV CGO_ENABLED=1 \
@@ -56,6 +56,7 @@ RUN groupadd --gid $USER_GID $USERNAME && \
 # Set working directory and permissions
 WORKDIR /workspace
 RUN chown -R $USERNAME:$USERNAME /workspace
+
 # Install common dev tools
 RUN apt-get install -y git sudo
 
