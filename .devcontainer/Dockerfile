@@ -4,14 +4,35 @@ FROM ubuntu:22.04
 # Set noninteractive installation
 ENV DEBIAN_FRONTEND=noninteractive
 
-# Install Docker CLI
+# Install core tools for Cascade/Windsurf and dev workflows
 RUN apt-get update \
-    && apt-get install -y apt-transport-https ca-certificates curl gnupg lsb-release \
+    && apt-get install -y --no-install-recommends \
+        apt-transport-https \
+        ca-certificates \
+        curl \
+        wget \
+        gnupg \
+        lsb-release \
+        python3 \
+        python3-pip \
+        build-essential \
+        bash \
+        tzdata \
+        git \
+        sudo \
+        nodejs \
+        npm \
     && mkdir -p /etc/apt/keyrings \
     && curl -fsSL https://download.docker.com/linux/ubuntu/gpg | gpg --dearmor -o /etc/apt/keyrings/docker.gpg \
-    && echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable" | tee /etc/apt/sources.list.d/docker.list > /dev/null \
+    && echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable" > /etc/apt/sources.list.d/docker.list \
     && apt-get update \
-    && apt-get install -y docker-ce-cli
+    && apt-get install -y --no-install-recommends \
+        docker-ce-cli \
+        docker-compose-plugin \
+    # [Optional] Install Cascade/Windsurf agent or CLI here if required
+    # RUN pip install cascade-cli  # Example only, uncomment and modify if needed
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
 
 # Install Go
 ENV GO_VERSION=1.24.0
