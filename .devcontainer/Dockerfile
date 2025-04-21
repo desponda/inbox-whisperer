@@ -21,7 +21,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     apt-get update && \
     apt-get install -y --no-install-recommends \
     docker-ce-cli \
-    docker-compose-plugin && \
+    docker-compose-plugin \
+    docker-compose && \
     rm -rf /var/lib/apt/lists/*
 
 # Install Node.js (LTS) and npm from NodeSource
@@ -31,7 +32,9 @@ RUN curl -fsSL https://deb.nodesource.com/setup_lts.x | bash - \
 # Install Go tools
 RUN go install golang.org/x/tools/gopls@latest && \
     go install github.com/go-delve/delve/cmd/dlv@latest && \
-    go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest
+    go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest && \
+    curl -L https://github.com/golang-migrate/migrate/releases/download/v4.17.2/migrate.linux-amd64.tar.gz | tar xvz && \
+    mv migrate /usr/local/bin/ && chmod +x /usr/local/bin/migrate
 
 # Set up environment
 ENV CGO_ENABLED=1 \
