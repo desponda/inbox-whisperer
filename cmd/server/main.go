@@ -15,6 +15,8 @@ import (
 
 	"github.com/desponda/inbox-whisperer/pkg/config"
 	"github.com/desponda/inbox-whisperer/internal/data"
+	"github.com/desponda/inbox-whisperer/internal/service"
+	"github.com/desponda/inbox-whisperer/internal/api"
 )
 
 // zerologMiddleware logs each HTTP request using zerolog
@@ -35,7 +37,7 @@ func main() {
 	defer db.Close()
 	log.Info().Msg("Database connection established")
 
-	r := setupRouter()
+	r := setupRouter(db)
 	srv := setupServer(cfg, r)
 
 	setupGracefulShutdown(srv)
@@ -72,13 +74,27 @@ func mustConnectDB(cfg *config.Config) *data.DB {
 	return db
 }
 
-func setupRouter() http.Handler {
+func setupRouter(db *data.DB) http.Handler {
 	r := chi.NewRouter()
 	r.Use(zerologMiddleware)
+
+	userRepo := db // *data.DB implements UserRepository
+	userService := service.NewUserService(userRepo)
+	userHandler := api.NewUserHandler(userService)
+
 	r.Get("/healthz", func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 		fmt.Fprintln(w, "ok")
 	})
+
+	r.Route("/users", func(r chi.Router) {
+		r.Get("/", userHandler.ListUsers)
+		r.Get("/{id}", userHandler.GetUser)
+		r.Post("/", userHandler.CreateUser)
+		r.Put("/{id}", userHandler.UpdateUser)
+		r.Delete("/{id}", userHandler.DeleteUser)
+	})
+
 	return r
 }
 

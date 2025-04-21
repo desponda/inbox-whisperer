@@ -5,11 +5,10 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/go-chi/chi/v5"
 )
 
 func TestHealthz(t *testing.T) {
-	r := setupRouter()
+	r := setupRouter(nil)
 	ts := httptest.NewServer(r)
 	defer ts.Close()
 
@@ -22,13 +21,3 @@ func TestHealthz(t *testing.T) {
 	}
 }
 
-// setupRouter returns the chi.Router as used in main.go
-func setupRouter() http.Handler {
-	r := chi.NewRouter()
-	r.Use(zerologMiddleware)
-	r.Get("/healthz", func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(http.StatusOK)
-		w.Write([]byte("ok\n"))
-	})
-	return r
-}

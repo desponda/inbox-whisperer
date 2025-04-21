@@ -41,7 +41,7 @@ This feature tracks the next phase of backend development for Inbox Whisperer, f
 ### 4. Service Layer
 - [x] Scaffold service and repository interfaces for a sample entity (User)
 - [x] Implement service structs/methods for core business logic
-- [ ] Integrate service layer into server
+- [x] Integrate service layer into server
 - [ ] Add unit tests for services
 
 ---
@@ -53,9 +53,16 @@ This feature tracks the next phase of backend development for Inbox Whisperer, f
 **Note:**
 - The data layer is currently Postgres-specific, but the service layer will depend on interfaces for future flexibility and testability. This keeps the app easy to refactor or extend to other backends later.
 ### 5. API Layer
-- [ ] Implement HTTP handlers (thin, just call service)
-- [ ] Add request validation
+- [x] Implement HTTP handlers (thin, just call service)
+- [x] Add request validation
 - [ ] Add tests for handlers
+
+---
+
+**Update (2025-04-21):**
+- UserHandler and endpoints for GET /users/{id} and POST /users are implemented and wired up in the server.
+- Basic request validation (required fields, ID presence) added to handlers.
+- Next: Add tests for handlers and service unit tests.
 
 ### 6. CI & Quality
 - [ ] Add Makefile targets for lint, test, and build

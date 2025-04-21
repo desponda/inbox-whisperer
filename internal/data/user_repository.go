@@ -9,10 +9,43 @@ import (
 type UserRepository interface {
 	GetByID(ctx context.Context, id string) (*models.User, error)
 	Create(ctx context.Context, user *models.User) error
+	List(ctx context.Context) ([]*models.User, error)
+	Update(ctx context.Context, user *models.User) error
+	Delete(ctx context.Context, id string) error
 }
 
 // PostgresUserRepository implements UserRepository for Postgres
 // (implements all methods on *DB)
+func (db *DB) List(ctx context.Context) ([]*models.User, error) {
+	rows, err := db.Pool.Query(ctx, `SELECT id, email, created_at FROM users`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var users []*models.User
+	for rows.Next() {
+		var u models.User
+		if err := rows.Scan(&u.ID, &u.Email, &u.CreatedAt); err != nil {
+			return nil, err
+		}
+		users = append(users, &u)
+	}
+	return users, rows.Err()
+}
+
+func (db *DB) Update(ctx context.Context, user *models.User) error {
+	_, err := db.Pool.Exec(ctx,
+		`UPDATE users SET email = $1 WHERE id = $2`,
+		user.Email, user.ID,
+	)
+	return err
+}
+
+func (db *DB) Delete(ctx context.Context, id string) error {
+	_, err := db.Pool.Exec(ctx, `DELETE FROM users WHERE id = $1`, id)
+	return err
+}
+
 func (db *DB) GetByID(ctx context.Context, id string) (*models.User, error) {
 	row := db.Pool.QueryRow(ctx, `SELECT id, email, created_at FROM users WHERE id = $1`, id)
 	var user models.User
