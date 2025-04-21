@@ -1,1 +1,31 @@
-{"image":"mcr.microsoft.com/devcontainers/base:ubuntu"}
+{
+  "name": "Go + ReactJS DevContainer",
+  "image": "mcr.microsoft.com/devcontainers/go:1.22-bullseye",
+  "features": {
+    "ghcr.io/devcontainers/features/node:1": {
+      "version": "lts"
+    },
+    "ghcr.io/devcontainers/features/yarn:1": {}
+  },
+  "runArgs": [
+    "--cap-add=ALL",
+    "--security-opt=apparmor:unconfined",
+    "--security-opt=seccomp:unconfined",
+    "--privileged"
+  ],
+  "postCreateCommand": "go version && node --version && yarn --version",
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "golang.Go",
+        "dbaeumer.vscode-eslint",
+        "esbenp.prettier-vscode",
+        "ms-vscode.vscode-typescript-next",
+        "ms-azuretools.vscode-docker"
+      ],
+      "settings": {
+        "terminal.integrated.shell.linux": "/bin/bash"
+      }
+    }
+  }
+}
