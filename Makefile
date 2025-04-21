@@ -42,14 +42,6 @@ test-db-integration:
 
 # CI/CD/Production only: Apply/rollback migrations using golang-migrate Docker image
 # WARNING: These targets will NOT work from inside a devcontainer unless the host's migrations folder is visible to Docker.
-.PHONY: docker-migrate-up
-docker-migrate-up:
-	docker-compose up -d db
-	docker run --rm -v "$(PWD)/migrations:/migrations" --network inbox-whisperer_default migrate/migrate \
-	  -path=/migrations -database "postgres://inbox:inboxpw@db:5432/inboxwhisperer?sslmode=disable" up
-
-.PHONY: docker-migrate-down
-docker-migrate-down:
-	docker-compose up -d db
-	docker run --rm -v "$(PWD)/migrations:/migrations" --network inbox-whisperer_default migrate/migrate \
-	  -path=/migrations -database "postgres://inbox:inboxpw@db:5432/inboxwhisperer?sslmode=disable" down 1
+# The docker-migrate-up and docker-migrate-down targets have been removed
+# because Docker volume mounting is unreliable in some environments (e.g., devcontainers, cloud IDEs).
+# Use the psql-migrate-up target for local/dev and containerized setups.

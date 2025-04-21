@@ -10,7 +10,7 @@ type UserRepository interface {
 	GetByID(ctx context.Context, id string) (*models.User, error)
 	Create(ctx context.Context, user *models.User) error
 	List(ctx context.Context) ([]*models.User, error)
-	Update(ctx context.Context, user *models.User) error
+	Update(ctx context.Context, user *models.User) error // supports Deactivated
 	Delete(ctx context.Context, id string) error
 }
 
@@ -33,10 +33,11 @@ func (db *DB) List(ctx context.Context) ([]*models.User, error) {
 	return users, rows.Err()
 }
 
+// Update updates user fields, including Deactivated for soft delete
 func (db *DB) Update(ctx context.Context, user *models.User) error {
 	_, err := db.Pool.Exec(ctx,
-		`UPDATE users SET email = $1 WHERE id = $2`,
-		user.Email, user.ID,
+		`UPDATE users SET email = $1, deactivated = $2 WHERE id = $3`,
+		user.Email, user.Deactivated, user.ID,
 	)
 	return err
 }

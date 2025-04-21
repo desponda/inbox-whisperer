@@ -13,6 +13,7 @@ type UserServiceInterface interface {
 	ListUsers(ctx context.Context) ([]*models.User, error)
 	UpdateUser(ctx context.Context, user *models.User) error
 	DeleteUser(ctx context.Context, id string) error
+	DeactivateUser(ctx context.Context, id string) error
 }
 
 type UserService struct {
@@ -29,6 +30,19 @@ func (s *UserService) UpdateUser(ctx context.Context, user *models.User) error {
 
 func (s *UserService) DeleteUser(ctx context.Context, id string) error {
 	return s.repo.Delete(ctx, id)
+}
+
+// DeactivateUser performs a soft delete (sets Deactivated=true)
+func (s *UserService) DeactivateUser(ctx context.Context, id string) error {
+	user, err := s.repo.GetByID(ctx, id)
+	if err != nil {
+		return err
+	}
+	if user.Deactivated {
+		return nil // already deactivated
+	}
+	user.Deactivated = true
+	return s.repo.Update(ctx, user)
 }
 
 func NewUserService(repo data.UserRepository) UserServiceInterface {

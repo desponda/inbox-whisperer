@@ -13,10 +13,11 @@ import (
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 
-	"github.com/desponda/inbox-whisperer/pkg/config"
+	"github.com/desponda/inbox-whisperer/internal/config"
 	"github.com/desponda/inbox-whisperer/internal/data"
 	"github.com/desponda/inbox-whisperer/internal/service"
 	"github.com/desponda/inbox-whisperer/internal/api"
+	"github.com/desponda/inbox-whisperer/internal/session"
 )
 
 // zerologMiddleware logs each HTTP request using zerolog
@@ -37,71 +38,75 @@ func main() {
 	defer db.Close()
 	log.Info().Msg("Database connection established")
 
-	r := setupRouter(db)
+	r := setupRouter(db, cfg)
 	srv := setupServer(cfg, r)
 
 	setupGracefulShutdown(srv)
 
-	log.Info().Msgf("Server is ready to handle requests at :%s", cfg.Port)
+	log.Info().Msgf("Server is ready to handle requests at :%s", cfg.Server.Port)
 	if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-		log.Fatal().Err(err).Msgf("Could not listen on :%s", cfg.Port)
+		log.Fatal().Err(err).Msgf("Could not listen on :%s", cfg.Server.Port)
 	}
 }
 
-func mustLoadConfig() *config.Config {
-	cfg, err := config.Load()
+func mustLoadConfig() *config.AppConfig {
+	cfg, err := config.LoadConfig("config.json")
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Failed to load config: %v\n", err)
 		os.Exit(1)
 	}
-	cfg.Print()
 	return cfg
 }
 
-func setupLogger(cfg *config.Config) {
+func setupLogger(cfg *config.AppConfig) {
 	zerolog.TimeFieldFormat = zerolog.TimeFormatUnix
 	log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stderr})
 	// Optionally set log level from cfg.LogLevel here
 }
 
-func mustConnectDB(cfg *config.Config) *data.DB {
+func mustConnectDB(cfg *config.AppConfig) *data.DB {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
-	db, err := data.New(ctx, cfg.DBUrl)
+	db, err := data.New(ctx, cfg.Server.DBUrl)
 	if err != nil {
 		log.Fatal().Err(err).Msg("Failed to connect to database")
 	}
 	return db
 }
 
-func setupRouter(db *data.DB) http.Handler {
+func setupRouter(db *data.DB, cfg *config.AppConfig) http.Handler {
 	r := chi.NewRouter()
 	r.Use(zerologMiddleware)
+	// Session middleware
+	r.Use(session.Middleware)
 
-	userRepo := db // *data.DB implements UserRepository
-	userService := service.NewUserService(userRepo)
-	userHandler := api.NewUserHandler(userService)
+	// Register OAuth2 endpoints
+	api.RegisterAuthRoutes(r, cfg, db)
+	// Register Gmail API endpoints
+	api.RegisterGmailRoutes(r, db)
+
+	h := api.NewUserHandler(service.NewUserService(db))
+	r.Route("/users", func(r chi.Router) {
+		r.Get("/", h.ListUsers)
+		r.Post("/", h.CreateUser)
+		// Only allow users to access/modify their own info
+		r.With(api.RequireSameUser).Get("/{id}", h.GetUser)
+		r.With(api.RequireSameUser).Put("/{id}", h.UpdateUser)
+		r.With(api.RequireSameUser).Delete("/{id}", h.DeleteUser)
+	})
 
 	r.Get("/healthz", func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 		fmt.Fprintln(w, "ok")
 	})
 
-	r.Route("/users", func(r chi.Router) {
-		r.Get("/", userHandler.ListUsers)
-		r.Get("/{id}", userHandler.GetUser)
-		r.Post("/", userHandler.CreateUser)
-		r.Put("/{id}", userHandler.UpdateUser)
-		r.Delete("/{id}", userHandler.DeleteUser)
-	})
-
 	return r
 }
 
-func setupServer(cfg *config.Config, handler http.Handler) *http.Server {
+func setupServer(cfg *config.AppConfig, handler http.Handler) *http.Server {
 	return &http.Server{
 		Handler:      handler,
-		Addr:         ":" + cfg.Port,
+		Addr:         ":" + cfg.Server.Port,
 		WriteTimeout: 15 * time.Second,
 		ReadTimeout:  15 * time.Second,
 	}

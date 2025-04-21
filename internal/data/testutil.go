@@ -44,6 +44,16 @@ func SetupTestDB(t *testing.T) (*DB, func()) {
 		t.Fatalf("failed to create users table: %v", err)
 	}
 
+	// Create user_tokens table (from migration)
+	_, err = pool.Exec(ctx, `CREATE TABLE IF NOT EXISTS user_tokens (
+		user_id TEXT PRIMARY KEY,
+		token_json TEXT NOT NULL,
+		updated_at TIMESTAMP NOT NULL DEFAULT now()
+	)`)
+	if err != nil {
+		t.Fatalf("failed to create user_tokens table: %v", err)
+	}
+
 	db := &DB{Pool: pool}
 	cleanup := func() {
 		pool.Close()

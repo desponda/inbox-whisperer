@@ -5,10 +5,18 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	"github.com/desponda/inbox-whisperer/internal/config"
 )
 
 func TestHealthz(t *testing.T) {
-	r := setupRouter(nil)
+	dummyCfg := &config.AppConfig{
+		Google: config.GoogleConfig{
+			ClientID:     "dummy",
+			ClientSecret: "dummy",
+			RedirectURL:  "http://localhost:8080/api/auth/callback",
+		},
+	}
+	r := setupRouter(nil, dummyCfg)
 	ts := httptest.NewServer(r)
 	defer ts.Close()
 

@@ -41,6 +41,54 @@ func TestUserAPI_Integration(t *testing.T) {
 	router, cleanup := setupIntegrationServer(t)
 	defer cleanup()
 
+	// List users (should be forbidden)
+	req := httptest.NewRequest("GET", "/users/", nil)
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+	if w.Code != http.StatusForbidden {
+		t.Errorf("GET /users/ got status %d, want 403", w.Code)
+	}
+
+	// Create user (should be forbidden)
+	user := &models.User{
+		ID:        uuid.NewString(),
+		Email:     "integration@example.com",
+		CreatedAt: time.Now().UTC(),
+	}
+	body, _ := json.Marshal(user)
+	req = httptest.NewRequest("POST", "/users/", bytes.NewReader(body))
+	w = httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+	if w.Code != http.StatusForbidden {
+		t.Errorf("POST /users/ got status %d, want 403", w.Code)
+	}
+
+	// Update user (should return bad request for no updatable fields)
+	req = httptest.NewRequest("PUT", "/users/"+user.ID, bytes.NewReader(body))
+	w = httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+	if w.Code != http.StatusBadRequest {
+		t.Errorf("PUT /users/{id} got status %d, want 400", w.Code)
+	}
+
+	// Delete user (should return 204 even if user doesn't exist)
+	req = httptest.NewRequest("DELETE", "/users/"+user.ID, nil)
+	w = httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+	if w.Code != http.StatusNoContent {
+		t.Errorf("DELETE /users/{id} got status %d, want 204", w.Code)
+	}
+
+	// Session handling integration: set and get session
+	// (Simulate login and access protected endpoint)
+	// You should add more session-based endpoint tests as you expand session usage.
+}
+	if testing.Short() || os.Getenv("SKIP_DB_INTEGRATION") == "1" {
+		t.Skip("skipping integration test")
+	}
+	router, cleanup := setupIntegrationServer(t)
+	defer cleanup()
+
 	// Create user
 	user := &models.User{
 		ID:        uuid.NewString(),
