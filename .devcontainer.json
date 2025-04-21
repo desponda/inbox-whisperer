@@ -1,31 +1,37 @@
 {
-  "name": "Go + ReactJS DevContainer",
+  "name": "Inbox Whisperer Development",
   "image": "mcr.microsoft.com/devcontainers/go:1.22-bullseye",
   "features": {
     "ghcr.io/devcontainers/features/node:1": {
-      "version": "lts"
-    },
-    "ghcr.io/devcontainers/features/yarn:1": {}
+      "version": "lts",
+      "installYarn": true
+    }
   },
   "runArgs": [
-    "--cap-add=ALL",
-    "--security-opt=apparmor:unconfined",
-    "--security-opt=seccomp:unconfined",
-    "--privileged"
+    "-v", "/var/run/docker.sock:/var/run/docker.sock"
   ],
-  "postCreateCommand": "go version && node --version && yarn --version",
+  "postCreateCommand": "cd frontend && npm install && cd .. && go mod download",
   "customizations": {
     "vscode": {
+      "settings": {
+        "go.toolsManagement.checkForUpdates": "local",
+        "go.useLanguageServer": true,
+        "go.gopath": "/go",
+        "go.goroot": "/usr/local/go",
+        "typescript.tsdk": "frontend/node_modules/typescript/lib",
+        "editor.formatOnSave": true,
+        "editor.codeActionsOnSave": {
+          "source.fixAll.eslint": true
+        }
+      },
       "extensions": [
         "golang.Go",
+        "ms-azuretools.vscode-docker",
+        "GitHub.copilot",
         "dbaeumer.vscode-eslint",
-        "esbenp.prettier-vscode",
-        "ms-vscode.vscode-typescript-next",
-        "ms-azuretools.vscode-docker"
-      ],
-      "settings": {
-        "terminal.integrated.shell.linux": "/bin/bash"
-      }
+        "esbenp.prettier-vscode"
+      ]
     }
-  }
+  },
+  "remoteUser": "root"
 }
