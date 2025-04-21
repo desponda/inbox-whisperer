@@ -1,12 +1,8 @@
 {
   "name": "Inbox Whisperer Development",
-  "image": "mcr.microsoft.com/devcontainers/go:1.22-bullseye",
-  "features": {
-    "ghcr.io/devcontainers/features/node:1": {
-      "version": "lts",
-      "installYarn": true
-    }
-  },
+  "dockerFile": "Dockerfile",
+  "context": "..",
+  "features": {},
   "runArgs": [
     "-v", "/var/run/docker.sock:/var/run/docker.sock"
   ],
