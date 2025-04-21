@@ -1,0 +1,22 @@
+openapi: 3.0.3
+info:
+  title: Inbox Whisperer API
+  version: 0.1.0
+  description: >
+    OpenAPI specification for the Inbox Whisperer backend API.
+    This spec will be expanded as endpoints are implemented.
+servers:
+  - url: http://localhost:8080
+paths:
+  /healthz:
+    get:
+      summary: Health check
+      description: Returns 200 OK if the server is running
+      responses:
+        '200':
+          description: OK
+          content:
+            text/plain:
+              schema:
+                type: string
+                example: ok
