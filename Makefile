@@ -37,6 +37,9 @@ psql-migrate-up:
 migrate-create:
 	@read -p "Migration name: " name; migrate create -dir ./migrations -ext sql $$name
 
+test-db-integration:
+	go test -tags=integration ./internal/data/
+
 # CI/CD/Production only: Apply/rollback migrations using golang-migrate Docker image
 # WARNING: These targets will NOT work from inside a devcontainer unless the host's migrations folder is visible to Docker.
 .PHONY: docker-migrate-up

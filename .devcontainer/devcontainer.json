@@ -2,7 +2,9 @@
   "name": "Inbox Whisperer Development",
   "dockerFile": "Dockerfile",
   "context": "..",
-  "features": {},
+  "features": {
+    "ghcr.io/devcontainers/features/docker-in-docker:2": {}
+  },
   "runArgs": [
     "-v", "/var/run/docker.sock:/var/run/docker.sock"
   ],

@@ -1,28 +1,43 @@
-# Core Data Schema & Initialization
+# Core Data Schema & Migration System
 
-## Implementation Plan
+## Current State (as of 2025-04-21)
 
-This feature sets up the foundational data layer for Inbox Whisperer, ensuring a scalable, maintainable, and production-ready backend. It includes the SQL schema, database initialization, and supporting scripts/configuration for development.
+- **Database migrations are managed via SQL files in `migrations/`**
+- **Local development uses a single idempotent command:**
+  ```sh
+  make dev-up
+  ```
+  - Brings up the Postgres DB (via Docker Compose)
+  - Applies all migrations using `psql` inside the DB container
+  - Safe to run multiple times (idempotent: no duplicate data or errors)
+- **Creating new migrations:**
+  - Run `make migrate-create` to generate new `.up.sql`/`.down.sql` files
+  - Edit those files to define schema changes
+- **All migrations are idempotent:**
+  - Tables and indexes use `IF NOT EXISTS`
+  - Seed data uses `ON CONFLICT DO NOTHING`
+- **CI/CD and production:**
+  - Use the `docker-migrate-up`/`down` targets if needed (ensure migrations are visible to Docker)
 
-### Goals
-- Establish a modular, extensible PostgreSQL schema
-- Enable easy local development and onboarding
-- Lay the groundwork for clean backend architecture and future microservices
-
-## Checklist
-
-- [ ] Review and finalize `schema.sql` for core tables and relationships
-- [ ] Add or update `docker-compose.yml` to run PostgreSQL for local development
-- [ ] Add a script or Makefile target to initialize the database from `schema.sql`
-- [ ] Document setup and initialization steps in `README.md`
-- [ ] Scaffold Go backend directories:
+## Checklist (updated)
+- [x] Modular, extensible PostgreSQL schema defined in migration files
+- [x] `docker-compose.yml` for local Postgres
+- [x] Idempotent Makefile target for DB setup (`make dev-up`)
+- [x] Clear documentation in `migrations/README.md`
+- [x] Scaffold Go backend directories:
     - `/internal/models` for data structs
     - `/internal/data` for DB access
     - `/internal/api` for REST handlers
     - `/cmd/server` for entrypoint
-- [ ] Start an OpenAPI spec for backend endpoints
-- [ ] Track progress in this feature file
+- [x] Start an OpenAPI spec for backend endpoints (see `api/openapi.yaml`)
+- [x] Track progress in this feature file
+
+---
+
+**The core data schema, migrations, and onboarding workflow are now complete and stable.**
+
+➡️ Next steps for backend API and service development are tracked in a new feature file: `features/go-backend-api.md`.
 
 ## Notes
 - All changes should align with the principles in `developing.md` (RESTful, clean code, separation of concerns, OpenAPI-driven)
-- This feature is foundational for all future development
+- This workflow ensures all contributors have a robust, reproducible, and hassle-free DB setup.
