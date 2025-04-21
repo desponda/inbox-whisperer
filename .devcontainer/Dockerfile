@@ -33,8 +33,11 @@ RUN curl -fsSL https://deb.nodesource.com/setup_lts.x | bash - \
 RUN go install golang.org/x/tools/gopls@latest && \
     go install github.com/go-delve/delve/cmd/dlv@latest && \
     go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest && \
-    curl -L https://github.com/golang-migrate/migrate/releases/download/v4.17.2/migrate.linux-amd64.tar.gz | tar xvz && \
-    mv migrate /usr/local/bin/ && chmod +x /usr/local/bin/migrate
+    curl -fL https://github.com/golang-migrate/migrate/releases/download/v4.17.2/migrate.linux-amd64.tar.gz -o migrate.tar.gz && \
+    tar -xvzf migrate.tar.gz && \
+    mv migrate /usr/local/bin/migrate && chmod +x /usr/local/bin/migrate && \
+    rm migrate.tar.gz
+
 
 # Set up environment
 ENV CGO_ENABLED=1 \
