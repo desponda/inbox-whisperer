@@ -129,6 +129,34 @@ cython_debug/
 # VS Code
 .vscode/
 
+# Node, Go, and general dev junk
+node_modules/
+.env
+.env.*
+*.local
+*.log
+
+# Migration and DB artifacts
+migrate
+migrate.linux-amd64*
+*.db
+pgdata/
+/inbox-whisperer_pgdata/
+/inbox-whisperer_default/
+
+# Build and dist
+/dist/
+/build/
+
+# Scripts and binaries
+scripts/install-migrate.sh
+
+# Ignore database reset/reference schema
+schema.sql
+
+# Migration temp files
+*.tmp
+
 # System
 .DS_Store
 Thumbs.db
