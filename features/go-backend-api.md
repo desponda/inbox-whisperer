@@ -42,7 +42,7 @@ This feature tracks the next phase of backend development for Inbox Whisperer, f
 - [x] Scaffold service and repository interfaces for a sample entity (User)
 - [x] Implement service structs/methods for core business logic
 - [x] Integrate service layer into server
-- [ ] Add unit tests for services
+- [x] Add unit tests for services
 
 ---
 **Next step:**
@@ -55,7 +55,7 @@ This feature tracks the next phase of backend development for Inbox Whisperer, f
 ### 5. API Layer
 - [x] Implement HTTP handlers (thin, just call service)
 - [x] Add request validation
-- [ ] Add tests for handlers
+- [x] Add tests for handlers
 
 ---
 

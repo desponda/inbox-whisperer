@@ -102,6 +102,205 @@ func TestUserHandler_GetUser(t *testing.T) {
 	}
 }
 
+func TestUserHandler_ListUsers(t *testing.T) {
+	t.Run("success", func(t *testing.T) {
+		h := &UserHandler{Service: &mockUserService{
+			ListUsersFunc: func(ctx context.Context) ([]*models.User, error) {
+				return []*models.User{{ID: "a", Email: "a@example.com"}}, nil
+			},
+		}}
+		r := chi.NewRouter()
+		r.Get("/users", h.ListUsers)
+		req := httptest.NewRequest("GET", "/users", nil)
+		w := httptest.NewRecorder()
+		r.ServeHTTP(w, req)
+		if w.Code != http.StatusOK {
+			t.Errorf("expected status 200, got %d", w.Code)
+		}
+		var users []models.User
+		if err := json.Unmarshal(w.Body.Bytes(), &users); err != nil {
+			t.Errorf("could not parse response: %v", err)
+		}
+		if len(users) != 1 || users[0].ID != "a" {
+			t.Errorf("unexpected users: %+v", users)
+		}
+	})
+	t.Run("error", func(t *testing.T) {
+		h := &UserHandler{Service: &mockUserService{
+			ListUsersFunc: func(ctx context.Context) ([]*models.User, error) {
+				return nil, context.DeadlineExceeded
+			},
+		}}
+		r := chi.NewRouter()
+		r.Get("/users", h.ListUsers)
+		req := httptest.NewRequest("GET", "/users", nil)
+		w := httptest.NewRecorder()
+		r.ServeHTTP(w, req)
+		if w.Code != http.StatusInternalServerError {
+			t.Errorf("expected status 500, got %d", w.Code)
+		}
+		var errResp map[string]string
+		if err := json.Unmarshal(w.Body.Bytes(), &errResp); err != nil {
+			t.Errorf("could not parse error response: %v", err)
+		}
+		if errResp["error"] != "context deadline exceeded" {
+			t.Errorf("unexpected error message: %q", errResp["error"])
+		}
+	})
+}
+
+func TestUserHandler_UpdateUser(t *testing.T) {
+	t.Run("success", func(t *testing.T) {
+		called := false
+		h := &UserHandler{Service: &mockUserService{
+			UpdateUserFunc: func(ctx context.Context, user *models.User) error {
+				called = true
+				if user.ID != "a" || user.Email != "update@example.com" {
+					t.Errorf("unexpected user: %+v", user)
+				}
+				return nil
+			},
+		}}
+		r := chi.NewRouter()
+		r.Put("/users/{id}", h.UpdateUser)
+		body, _ := json.Marshal(models.User{Email: "update@example.com"})
+		req := httptest.NewRequest("PUT", "/users/a", bytes.NewReader(body))
+		w := httptest.NewRecorder()
+		r.ServeHTTP(w, req)
+		if w.Code != http.StatusOK {
+			t.Errorf("expected status 200, got %d", w.Code)
+		}
+		if !called {
+			t.Error("expected UpdateUserFunc to be called")
+		}
+		var user models.User
+		if err := json.Unmarshal(w.Body.Bytes(), &user); err != nil {
+			t.Errorf("could not parse response: %v", err)
+		}
+		if user.ID != "a" || user.Email != "update@example.com" {
+			t.Errorf("unexpected user: %+v", user)
+		}
+	})
+	t.Run("missing id", func(t *testing.T) {
+		h := &UserHandler{Service: &mockUserService{}}
+		r := chi.NewRouter()
+		r.Put("/users/{id}", h.UpdateUser)
+		body, _ := json.Marshal(models.User{Email: "update@example.com"})
+		req := httptest.NewRequest("PUT", "/users/", bytes.NewReader(body))
+		w := httptest.NewRecorder()
+		r.ServeHTTP(w, req)
+		if w.Code != http.StatusNotFound {
+			t.Errorf("expected status 404, got %d", w.Code)
+		}
+		if w.Body.String() != "404 page not found\n" {
+			t.Errorf("unexpected body: %q", w.Body.String())
+		}
+	})
+	t.Run("invalid body", func(t *testing.T) {
+		h := &UserHandler{Service: &mockUserService{}}
+		r := chi.NewRouter()
+		r.Put("/users/{id}", h.UpdateUser)
+		req := httptest.NewRequest("PUT", "/users/a", bytes.NewReader([]byte("notjson")))
+		w := httptest.NewRecorder()
+		r.ServeHTTP(w, req)
+		if w.Code != http.StatusBadRequest {
+			t.Errorf("expected status 400, got %d", w.Code)
+		}
+		var errResp map[string]string
+		if err := json.Unmarshal(w.Body.Bytes(), &errResp); err != nil {
+			t.Errorf("could not parse error response: %v", err)
+		}
+		if errResp["error"] != "invalid request body" {
+			t.Errorf("unexpected error message: %q", errResp["error"])
+		}
+	})
+	t.Run("service error", func(t *testing.T) {
+		h := &UserHandler{Service: &mockUserService{
+			UpdateUserFunc: func(ctx context.Context, user *models.User) error {
+				return context.DeadlineExceeded
+			},
+		}}
+		r := chi.NewRouter()
+		r.Put("/users/{id}", h.UpdateUser)
+		body, _ := json.Marshal(models.User{Email: "update@example.com"})
+		req := httptest.NewRequest("PUT", "/users/a", bytes.NewReader(body))
+		w := httptest.NewRecorder()
+		r.ServeHTTP(w, req)
+		if w.Code != http.StatusInternalServerError {
+			t.Errorf("expected status 500, got %d", w.Code)
+		}
+		var errResp map[string]string
+		if err := json.Unmarshal(w.Body.Bytes(), &errResp); err != nil {
+			t.Errorf("could not parse error response: %v", err)
+		}
+		if errResp["error"] != "context deadline exceeded" {
+			t.Errorf("unexpected error message: %q", errResp["error"])
+		}
+	})
+}
+
+func TestUserHandler_DeleteUser(t *testing.T) {
+	t.Run("success", func(t *testing.T) {
+		called := false
+		h := &UserHandler{Service: &mockUserService{
+			DeleteUserFunc: func(ctx context.Context, id string) error {
+				called = true
+				if id != "a" {
+					t.Errorf("unexpected id: %s", id)
+				}
+				return nil
+			},
+		}}
+		r := chi.NewRouter()
+		r.Delete("/users/{id}", h.DeleteUser)
+		req := httptest.NewRequest("DELETE", "/users/a", nil)
+		w := httptest.NewRecorder()
+		r.ServeHTTP(w, req)
+		if w.Code != http.StatusNoContent {
+			t.Errorf("expected status 204, got %d", w.Code)
+		}
+		if !called {
+			t.Error("expected DeleteUserFunc to be called")
+		}
+	})
+	t.Run("missing id", func(t *testing.T) {
+		h := &UserHandler{Service: &mockUserService{}}
+		r := chi.NewRouter()
+		r.Delete("/users/{id}", h.DeleteUser)
+		req := httptest.NewRequest("DELETE", "/users/", nil)
+		w := httptest.NewRecorder()
+		r.ServeHTTP(w, req)
+		if w.Code != http.StatusNotFound {
+			t.Errorf("expected status 404, got %d", w.Code)
+		}
+		if w.Body.String() != "404 page not found\n" {
+			t.Errorf("unexpected body: %q", w.Body.String())
+		}
+	})
+	t.Run("service error", func(t *testing.T) {
+		h := &UserHandler{Service: &mockUserService{
+			DeleteUserFunc: func(ctx context.Context, id string) error {
+				return context.DeadlineExceeded
+			},
+		}}
+		r := chi.NewRouter()
+		r.Delete("/users/{id}", h.DeleteUser)
+		req := httptest.NewRequest("DELETE", "/users/a", nil)
+		w := httptest.NewRecorder()
+		r.ServeHTTP(w, req)
+		if w.Code != http.StatusInternalServerError {
+			t.Errorf("expected status 500, got %d", w.Code)
+		}
+		var errResp map[string]string
+		if err := json.Unmarshal(w.Body.Bytes(), &errResp); err != nil {
+			t.Errorf("could not parse error response: %v", err)
+		}
+		if errResp["error"] != "context deadline exceeded" {
+			t.Errorf("unexpected error message: %q", errResp["error"])
+		}
+	})
+}
+
 func TestUserHandler_CreateUser(t *testing.T) {
 	tests := []struct {
 		name       string

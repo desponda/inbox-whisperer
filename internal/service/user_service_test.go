@@ -84,6 +84,100 @@ func TestUserService_GetUser(t *testing.T) {
 	}
 }
 
+func TestUserService_ListUsers(t *testing.T) {
+	t.Run("success", func(t *testing.T) {
+		repo := &mockUserRepo{
+			ListFunc: func(ctx context.Context) ([]*models.User, error) {
+				return []*models.User{{ID: "a", Email: "a@example.com"}}, nil
+			},
+		}
+		svc := NewUserService(repo)
+		users, err := svc.ListUsers(context.Background())
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if len(users) != 1 || users[0].ID != "a" {
+			t.Errorf("unexpected users: %+v", users)
+		}
+	})
+	t.Run("error", func(t *testing.T) {
+		repo := &mockUserRepo{
+			ListFunc: func(ctx context.Context) ([]*models.User, error) {
+				return nil, context.DeadlineExceeded
+			},
+		}
+		svc := NewUserService(repo)
+		_, err := svc.ListUsers(context.Background())
+		if err == nil {
+			t.Error("expected error, got nil")
+		}
+	})
+}
+
+func TestUserService_UpdateUser(t *testing.T) {
+	t.Run("success", func(t *testing.T) {
+		called := false
+		repo := &mockUserRepo{
+			UpdateFunc: func(ctx context.Context, user *models.User) error {
+				called = true
+				return nil
+			},
+		}
+		svc := NewUserService(repo)
+		err := svc.UpdateUser(context.Background(), &models.User{ID: "a"})
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if !called {
+			t.Error("expected UpdateFunc to be called")
+		}
+	})
+	t.Run("error", func(t *testing.T) {
+		repo := &mockUserRepo{
+			UpdateFunc: func(ctx context.Context, user *models.User) error {
+				return context.DeadlineExceeded
+			},
+		}
+		svc := NewUserService(repo)
+		err := svc.UpdateUser(context.Background(), &models.User{ID: "a"})
+		if err == nil {
+			t.Error("expected error, got nil")
+		}
+	})
+}
+
+func TestUserService_DeleteUser(t *testing.T) {
+	t.Run("success", func(t *testing.T) {
+		called := false
+		repo := &mockUserRepo{
+			DeleteFunc: func(ctx context.Context, id string) error {
+				called = true
+				return nil
+			},
+		}
+		svc := NewUserService(repo)
+		err := svc.DeleteUser(context.Background(), "a")
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if !called {
+			t.Error("expected DeleteFunc to be called")
+		}
+	})
+	t.Run("error", func(t *testing.T) {
+		repo := &mockUserRepo{
+			DeleteFunc: func(ctx context.Context, id string) error {
+				return context.DeadlineExceeded
+			},
+		}
+		svc := NewUserService(repo)
+		err := svc.DeleteUser(context.Background(), "a")
+		if err == nil {
+			t.Error("expected error, got nil")
+		}
+	})
+}
+
 func TestUserService_CreateUser(t *testing.T) {
 	tests := []struct {
 		name      string
