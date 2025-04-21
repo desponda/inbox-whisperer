@@ -34,7 +34,10 @@
 
 ---
 
-**The core data schema, migrations, and onboarding workflow are now complete and stable.**
+**The core data schema, migrations, onboarding workflow, and test infrastructure (including testcontainers for repository tests) are now complete and stable.**
+
+- Test DB setup now programmatically creates all required tables (including user_tokens) for repository tests.
+- All tests pass as of 2025-04-21.
 
 ➡️ Next steps for backend API and service development are tracked in a new feature file: `features/go-backend-api.md`.
 
