@@ -29,10 +29,11 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 RUN curl -fsSL https://deb.nodesource.com/setup_lts.x | bash - \
     && apt-get install -y nodejs
 
-# Install Go tools and golang-migrate (v4.18.2)
+# Install Go tools and golang-migrate (v4.18.2) and gomock/mockgen
 RUN go install golang.org/x/tools/gopls@latest && \
     go install github.com/go-delve/delve/cmd/dlv@latest && \
     go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest && \
+    go install github.com/golang/mock/mockgen@latest && \
     curl -fL https://github.com/golang-migrate/migrate/releases/download/v4.18.2/migrate.linux-amd64.tar.gz -o migrate.tar.gz && \
     tar -xvzf migrate.tar.gz && \
     chmod +x migrate && \

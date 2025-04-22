@@ -5,7 +5,9 @@ import (
 	"database/sql"
 	"encoding/json"
 	"time"
+
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/jackc/pgx/v5"
 )
 
 type GmailMessage struct {
@@ -30,7 +32,8 @@ type GmailMessage struct {
 type GmailMessageRepository interface {
 	UpsertMessage(ctx context.Context, msg *GmailMessage) error
 	GetMessageByID(ctx context.Context, userID, gmailMessageID string) (*GmailMessage, error)
-	GetMessagesForUser(ctx context.Context, userID string, limit, offset int) ([]*GmailMessage, error)
+	GetMessagesForUser(ctx context.Context, userID string, limit, offset int) ([]*GmailMessage, error) // legacy, wraps cursor version
+	GetMessagesForUserCursor(ctx context.Context, userID string, limit int, afterInternalDate int64, afterMsgID string) ([]*GmailMessage, error)
 	DeleteMessagesForUser(ctx context.Context, userID string) error
 }
 
@@ -109,9 +112,41 @@ func (r *gmailMessageRepository) GetMessageByID(ctx context.Context, userID, gma
 	return &msg, nil
 }
 
+// GetMessagesForUser provides offset-based pagination for legacy compatibility (not recommended for large inboxes)
 func (r *gmailMessageRepository) GetMessagesForUser(ctx context.Context, userID string, limit, offset int) ([]*GmailMessage, error) {
-	query := `SELECT id, user_id, gmail_message_id, thread_id, subject, sender, recipient, snippet, body, internal_date, history_id, cached_at, last_fetched_at, category, categorization_confidence, raw_json FROM gmail_messages WHERE user_id=$1 ORDER BY internal_date DESC LIMIT $2 OFFSET $3`
+	query := `SELECT id, user_id, gmail_message_id, thread_id, subject, sender, recipient, snippet, body, internal_date, history_id, cached_at, last_fetched_at, category, categorization_confidence, raw_json FROM gmail_messages WHERE user_id=$1 ORDER BY internal_date DESC, gmail_message_id DESC LIMIT $2 OFFSET $3`
 	rows, err := r.pool.Query(ctx, query, userID, limit, offset)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var msgs []*GmailMessage
+	for rows.Next() {
+		var msg GmailMessage
+		err := rows.Scan(&msg.ID, &msg.UserID, &msg.GmailMessageID, &msg.ThreadID, &msg.Subject, &msg.Sender, &msg.Recipient, &msg.Snippet, &msg.Body, &msg.InternalDate, &msg.HistoryID, &msg.CachedAt, &msg.LastFetchedAt, &msg.Category, &msg.CategorizationConfidence, &msg.RawJSON)
+		if err != nil {
+			return nil, err
+		}
+		msgs = append(msgs, &msg)
+	}
+	return msgs, nil
+}
+
+// GetMessagesForUserCursor returns a page of messages for a user, starting after the given cursor (internal_date, gmail_message_id)
+func (r *gmailMessageRepository) GetMessagesForUserCursor(ctx context.Context, userID string, limit int, afterInternalDate int64, afterMsgID string) ([]*GmailMessage, error) {
+	var (
+		query string
+		rows pgx.Rows
+		err error
+	)
+	if afterInternalDate > 0 && afterMsgID != "" {
+		// Use tuple comparison for stable pagination
+		query = `SELECT id, user_id, gmail_message_id, thread_id, subject, sender, recipient, snippet, body, internal_date, history_id, cached_at, last_fetched_at, category, categorization_confidence, raw_json FROM gmail_messages WHERE user_id=$1 AND (internal_date, gmail_message_id) < ($2, $3) ORDER BY internal_date DESC, gmail_message_id DESC LIMIT $4`
+		rows, err = r.pool.Query(ctx, query, userID, afterInternalDate, afterMsgID, limit)
+	} else {
+		query = `SELECT id, user_id, gmail_message_id, thread_id, subject, sender, recipient, snippet, body, internal_date, history_id, cached_at, last_fetched_at, category, categorization_confidence, raw_json FROM gmail_messages WHERE user_id=$1 ORDER BY internal_date DESC, gmail_message_id DESC LIMIT $2`
+		rows, err = r.pool.Query(ctx, query, userID, limit)
+	}
 	if err != nil {
 		return nil, err
 	}

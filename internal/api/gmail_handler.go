@@ -7,6 +7,7 @@ import (
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
@@ -29,7 +30,8 @@ func NewGmailHandler(svc GmailServiceInterface, userTokens data.UserTokenReposit
 	return &GmailHandler{Service: svc, UserTokens: userTokens}
 }
 
-// FetchMessagesHandler uses the OAuth2 token from the session
+// FetchMessagesHandler supports cursor-based pagination via after_id and after_internal_date query params.
+// Example: /api/gmail/fetch?after_id=abc123&after_internal_date=1713750000
 func (h *GmailHandler) FetchMessagesHandler(w http.ResponseWriter, r *http.Request) {
 	tokenStr := session.GetToken(r.Context())
 	var tok *oauth2.Token
@@ -48,7 +50,18 @@ func (h *GmailHandler) FetchMessagesHandler(w http.ResponseWriter, r *http.Reque
 			return
 		}
 	}
-	msgs, err := h.Service.FetchMessages(r.Context(), tok)
+	// Parse pagination params
+afterID := r.URL.Query().Get("after_id")
+afterInternalDate := int64(0)
+if v := r.URL.Query().Get("after_internal_date"); v != "" {
+	fmt.Sscanf(v, "%d", &afterInternalDate)
+}
+ctx := r.Context()
+if afterID != "" && afterInternalDate > 0 {
+	ctx = context.WithValue(ctx, "after_id", afterID)
+	ctx = context.WithValue(ctx, "after_internal_date", afterInternalDate)
+}
+msgs, err := h.Service.FetchMessages(ctx, tok)
 	if err != nil {
 		http.Error(w, "failed to fetch messages: "+err.Error(), http.StatusInternalServerError)
 		return

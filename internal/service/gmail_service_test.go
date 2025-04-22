@@ -4,6 +4,7 @@ import _ "github.com/jackc/pgx/v5/stdlib" // Register pgx as a database/sql driv
 
 import (
 	"context"
+	"fmt"
 	"testing"
 	"time"
 
@@ -83,4 +84,71 @@ func TestGmailService_CachingE2E(t *testing.T) {
 
 
 
-// You can add more tests for FetchMessages, cache miss, and handler integration as needed.
+func TestGmailService_FetchMessages_Pagination(t *testing.T) {
+	db, cleanup := data.SetupTestDB(t)
+	defer cleanup()
+	repo := data.NewGmailMessageRepositoryFromPool(db.Pool)
+	svc := NewGmailService(repo)
+	ctx := context.Background()
+	userID := "user-pagination"
+	tok := mockToken()
+	testCtx := session.ContextWithUserID(ctx, userID)
+
+	// Insert 15 messages with descending InternalDate (newest first)
+	var now = time.Now().Unix()
+	for i := 0; i < 15; i++ {
+		msg := &data.GmailMessage{
+			UserID:         userID,
+			GmailMessageID: fmt.Sprintf("msg_%02d", i),
+			ThreadID:       fmt.Sprintf("thread_%02d", i),
+			Subject:        fmt.Sprintf("Subject %02d", i),
+			Sender:         "sender@example.com",
+			Recipient:      "rcpt@example.com",
+			Snippet:        fmt.Sprintf("Snippet %02d", i),
+			Body:           fmt.Sprintf("Body %02d", i),
+			InternalDate:   now - int64(i*60), // 1 min apart
+			HistoryID:      int64(i),
+			CachedAt:       time.Now(),
+		}
+		err := repo.UpsertMessage(testCtx, msg)
+		if err != nil {
+			t.Fatalf("failed to upsert msg %d: %v", i, err)
+		}
+	}
+
+	// Fetch first page (should get 10)
+	msgs, err := svc.FetchMessages(testCtx, tok)
+	if err != nil {
+		t.Fatalf("FetchMessages page 1 failed: %v", err)
+	}
+	if len(msgs) != 10 {
+		t.Errorf("expected 10 messages, got %d", len(msgs))
+	}
+	last := msgs[len(msgs)-1]
+
+	// Fetch second page using cursor
+	ctx2 := context.WithValue(testCtx, "after_id", last.CursorAfterID)
+	ctx2 = context.WithValue(ctx2, "after_internal_date", last.CursorAfterInternalDate)
+	msgs2, err := svc.FetchMessages(ctx2, tok)
+	if err != nil {
+		t.Fatalf("FetchMessages page 2 failed: %v", err)
+	}
+	if len(msgs2) != 5 {
+		t.Errorf("expected 5 messages on page 2, got %d", len(msgs2))
+	}
+	if msgs2[0].ID != "msg_10" {
+		t.Errorf("expected msg_10 as first on page 2, got %s", msgs2[0].ID)
+	}
+
+	// Fetch after last message (should get 0)
+	last2 := msgs2[len(msgs2)-1]
+	ctx3 := context.WithValue(testCtx, "after_id", last2.CursorAfterID)
+	ctx3 = context.WithValue(ctx3, "after_internal_date", last2.CursorAfterInternalDate)
+	msgs3, err := svc.FetchMessages(ctx3, tok)
+	if err != nil {
+		t.Fatalf("FetchMessages page 3 failed: %v", err)
+	}
+	if len(msgs3) != 0 {
+		t.Errorf("expected 0 messages on page 3, got %d", len(msgs3))
+	}
+}

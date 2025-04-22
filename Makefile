@@ -37,8 +37,29 @@ psql-migrate-up:
 migrate-create:
 	@read -p "Migration name: " name; migrate create -dir ./migrations -ext sql $$name
 
+# Lint the codebase using golangci-lint (idempotent)
+.PHONY: lint
+lint:
+	golangci-lint run ./...
+
+# Run all tests (idempotent)
+.PHONY: test
+test:
+	go test -v ./...
+
+# Regenerate gomock mocks (idempotent)
+.PHONY: mockgen
+mockgen:
+	go run github.com/golang/mock/mockgen -source=internal/api/gmail_handler.go -destination=internal/api/mocks/mock_gmail_service.go -package=mocks GmailServiceInterface
+
+# Tidy go.mod and go.sum (idempotent)
+.PHONY: tidy
+tidy:
+	go mod tidy
+
 test-db-integration:
 	go test -tags=integration ./internal/data/
+
 
 # CI/CD/Production only: Apply/rollback migrations using golang-migrate Docker image
 # WARNING: These targets will NOT work from inside a devcontainer unless the host's migrations folder is visible to Docker.
