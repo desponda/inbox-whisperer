@@ -55,6 +55,11 @@ func Middleware(next http.Handler) http.Handler {
 	})
 }
 
+// ContextWithUserID returns a new context with the user ID set (for test and service use)
+func ContextWithUserID(ctx context.Context, userID string) context.Context {
+	return context.WithValue(ctx, userIDKey, userID)
+}
+
 // SetSession stores user/token for a session
 func SetSession(w http.ResponseWriter, r *http.Request, userID, token string) {
 	cookie, err := r.Cookie("session_id")

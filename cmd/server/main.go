@@ -9,15 +9,14 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/go-chi/chi/v5"
-	"github.com/rs/zerolog"
-	"github.com/rs/zerolog/log"
-
+	"github.com/desponda/inbox-whisperer/internal/api"
 	"github.com/desponda/inbox-whisperer/internal/config"
 	"github.com/desponda/inbox-whisperer/internal/data"
 	"github.com/desponda/inbox-whisperer/internal/service"
-	"github.com/desponda/inbox-whisperer/internal/api"
 	"github.com/desponda/inbox-whisperer/internal/session"
+	"github.com/go-chi/chi/v5"
+	"github.com/rs/zerolog"
+	"github.com/rs/zerolog/log"
 )
 
 // zerologMiddleware logs each HTTP request using zerolog
@@ -82,8 +81,10 @@ func setupRouter(db *data.DB, cfg *config.AppConfig) http.Handler {
 
 	// Register OAuth2 endpoints
 	api.RegisterAuthRoutes(r, cfg, db)
-	// Register Gmail API endpoints
-	api.RegisterGmailRoutes(r, db)
+	// Only register Gmail API endpoints if db is not nil (prevents nil pointer dereference in tests)
+	if db != nil {
+		api.RegisterGmailRoutes(r, db, db)
+	}
 
 	h := api.NewUserHandler(service.NewUserService(db))
 	r.Route("/users", func(r chi.Router) {

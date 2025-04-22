@@ -8,6 +8,56 @@ info:
 servers:
   - url: http://localhost:8080
 paths:
+  /api/gmail/fetch:
+    get:
+      summary: Fetch user's emails from Gmail
+      description: Fetches the latest emails for the authenticated user from Gmail and returns a list of email summaries.
+      responses:
+        '200':
+          description: List of email summaries
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/EmailSummary'
+        '401':
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/gmail/messages/{id}:
+    get:
+      summary: Get full email content
+      description: Returns the full content of a specific email by ID for the authenticated user.
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Email content
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EmailContent'
+        '404':
+          description: Email not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
   /healthz:
     get:
       summary: Health check
@@ -159,6 +209,47 @@ components:
           example: user@example.com
       required:
         - email
+    EmailSummary:
+      type: object
+      properties:
+        id:
+          type: string
+          example: 1789a2b1cdefg
+        subject:
+          type: string
+          example: "Welcome to Inbox Whisperer!"
+        from:
+          type: string
+          example: "notifications@example.com"
+        snippet:
+          type: string
+          example: "This is a preview of your email..."
+        date:
+          type: string
+          format: date-time
+          example: 2025-04-22T00:00:00Z
+    EmailContent:
+      type: object
+      properties:
+        id:
+          type: string
+          example: 1789a2b1cdefg
+        subject:
+          type: string
+          example: "Welcome to Inbox Whisperer!"
+        from:
+          type: string
+          example: "notifications@example.com"
+        to:
+          type: string
+          example: "user@example.com"
+        date:
+          type: string
+          format: date-time
+          example: 2025-04-22T00:00:00Z
+        body:
+          type: string
+          example: "Hello and welcome..."
     ErrorResponse:
       type: object
       properties:

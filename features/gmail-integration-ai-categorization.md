@@ -22,8 +22,17 @@ This feature tracks the implementation of Gmail integration and AI-powered email
 
 ### 2. Gmail API Fetching
 - [x] Implement service to fetch emails from Gmail API (using user's token) — `/api/gmail/fetch` endpoint implemented and tested.
-- [ ] Store fetched emails in database (raw and/or normalized form).
+- [x] Endpoint to get full content of a single email (`/api/gmail/messages/{id}`) for display
+- [x] Store fetched emails in database (raw and/or normalized form) — **DB schema and repository for message caching implemented (2025-04-22)**
 - [ ] Handle pagination, rate limits, and partial syncs.
+
+#### [Draft] Gmail Message Caching Strategy
+- All fetched Gmail messages (summaries and full content) are cached in the `gmail_messages` table, keyed by user and Gmail message ID.
+- The backend will check the cache before making Gmail API calls, using a freshness policy (e.g., 1 minute TTL or Gmail historyId/internalDate for staleness detection).
+- If a message is not cached or is stale, the backend will fetch from Gmail, update the cache, and return the result.
+- This reduces API quota usage, improves latency, and enables future features like offline/partial access and AI categorization persistence.
+- The repository pattern is used to abstract DB access for Gmail messages, supporting upsert, fetch, and delete operations.
+- See `internal/data/gmail_message_repository.go` and the migration `20250422_create_gmail_messages.sql` for implementation details.
 
 ---
 **Note:**
@@ -49,11 +58,13 @@ This feature tracks the implementation of Gmail integration and AI-powered email
 - [ ] Document setup and usage in README
 
 ## Checklist
-- [ ] Gmail OAuth2 flow implemented and tested
+- [x] Gmail OAuth2 flow implemented and tested
 - [x] Emails fetched from Gmail and returned via API
 - [x] User token storage implemented and tested
+- [x] Endpoint to get single email content for display
 - [ ] Emails stored in DB
 - [ ] Categorization service working and tested
 - [ ] REST endpoints for categorization exposed and documented
 - [x] All new code for Gmail fetch and token storage covered by unit/integration tests
+- [x] Docs and OpenAPI updated for MVP endpoints (login, fetch, display)
 - [ ] Docs and OpenAPI updated for categorization features

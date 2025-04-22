@@ -4,6 +4,12 @@
 
 Inbox Whisperer is a suite of AI-powered tools designed to help users achieve and maintain inbox zero. Our first feature is the Inbox Zero Helper—a guided workflow that enables users to efficiently triage and organize their Gmail inbox, ensuring that only truly important emails remain.
 
+## MVP Focus (2025-04-22)
+- Users sign up/log in via Google OAuth2
+- After login, users can fetch their emails (list)
+- Users can view the content of a specific email
+- All endpoints are described in OpenAPI and the spec is always kept up-to-date
+
 ## Core Workflow
 
 1. **Email Fetching**: The app securely connects to Gmail and fetches the user's emails.
