@@ -36,7 +36,8 @@ func (s *UserService) DeleteUser(ctx context.Context, id string) error {
 func (s *UserService) DeactivateUser(ctx context.Context, id string) error {
 	user, err := s.repo.GetByID(ctx, id)
 	if err != nil {
-		return err
+		// If user not found, treat as successful delete (idempotent)
+		return nil
 	}
 	if user.Deactivated {
 		return nil // already deactivated

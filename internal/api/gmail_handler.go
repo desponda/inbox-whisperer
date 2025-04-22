@@ -3,6 +3,7 @@ package api
 import "github.com/desponda/inbox-whisperer/internal/data"
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 
@@ -12,12 +13,16 @@ import (
 	"golang.org/x/oauth2"
 )
 
-type GmailHandler struct {
-	Service      *service.GmailService
-	UserTokens   data.UserTokenRepository
+type GmailServiceInterface interface {
+	FetchMessages(ctx context.Context, token *oauth2.Token) ([]service.MessageSummary, error)
 }
 
-func NewGmailHandler(svc *service.GmailService, userTokens data.UserTokenRepository) *GmailHandler {
+type GmailHandler struct {
+	Service    GmailServiceInterface
+	UserTokens data.UserTokenRepository
+}
+
+func NewGmailHandler(svc GmailServiceInterface, userTokens data.UserTokenRepository) *GmailHandler {
 	return &GmailHandler{Service: svc, UserTokens: userTokens}
 }
 
