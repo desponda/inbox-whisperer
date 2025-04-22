@@ -24,6 +24,10 @@ This feature tracks the implementation of Gmail integration and AI-powered email
 - [x] Implement service to fetch emails from Gmail API (using user's token) — `/api/gmail/fetch` endpoint implemented and tested.
 - [x] Endpoint to get full content of a single email (`/api/gmail/messages/{id}`) for display
 - [x] Store fetched emails in database (raw and/or normalized form) — **DB schema and repository for message caching implemented (2025-04-22)**
+- [x] Refactored backend Gmail fetching/caching logic for clarity, maintainability, and testability (2025-04-22)
+- [x] Introduced dependency injection for Gmail API (enables robust mocking/testing)
+- [x] Standardized error handling for Gmail 404s with helper function
+- [x] Ensured Date field is consistently extracted from both cached and fresh Gmail messages
 - [ ] Handle pagination, rate limits, and partial syncs.
 
 #### [Draft] Gmail Message Caching Strategy

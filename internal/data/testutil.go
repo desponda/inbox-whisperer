@@ -49,7 +49,7 @@ func SetupTestDB(t *testing.T) (*DB, func()) {
 	}
 
 	// Create users table
-	_, err = pool.Exec(ctx, `CREATE TABLE users (
+	_, err = pool.Exec(ctx, `CREATE TABLE IF NOT EXISTS users (
 		id TEXT PRIMARY KEY,
 		email TEXT NOT NULL,
 		created_at TIMESTAMP NOT NULL

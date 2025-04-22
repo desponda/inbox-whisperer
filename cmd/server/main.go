@@ -51,7 +51,7 @@ func main() {
 func mustLoadConfig() *config.AppConfig {
 	cfg, err := config.LoadConfig("config.json")
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Failed to load config: %v\n", err)
+		log.Fatal().Err(err).Msg("Failed to load config")
 		os.Exit(1)
 	}
 	return cfg

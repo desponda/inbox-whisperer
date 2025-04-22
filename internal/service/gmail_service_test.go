@@ -11,6 +11,9 @@ import (
 	"github.com/desponda/inbox-whisperer/internal/data"
 	"github.com/desponda/inbox-whisperer/internal/session"
 	"golang.org/x/oauth2"
+	"github.com/golang/mock/gomock"
+	"google.golang.org/api/gmail/v1"
+	mocks "github.com/desponda/inbox-whisperer/internal/mocks"
 )
 
 // mockToken returns a dummy OAuth2 token for tests
@@ -19,6 +22,29 @@ func mockToken() *oauth2.Token {
 }
 
 func TestGmailService_CachingE2E(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	mockAPI := mocks.NewMockGmailAPI(ctrl)
+	mockCall := mocks.NewMockUsersMessagesGetCall(ctrl)
+	mockAPI.EXPECT().UsersMessagesGet("me", "gmail_msg_123").Return(mockCall).AnyTimes()
+	mockCall.EXPECT().Do(gomock.Any()).Return(&gmail.Message{
+		Id: "gmail_msg_123",
+		ThreadId: "thread_1",
+		Snippet: "Hello world",
+		Payload: &gmail.MessagePart{
+			Headers: []*gmail.MessagePartHeader{
+				{Name: "From", Value: "sender@example.com"},
+				{Name: "To", Value: "rcpt@example.com"},
+				{Name: "Subject", Value: "Cached Subject"},
+				{Name: "Date", Value: "Wed, 01 Jan 2025 00:00:00 +0000"},
+			},
+			Body: &gmail.MessagePartBody{Data: "Q2FjaGVkIEJvZHk"}, // "Cached Body" base64url (no padding)
+		},
+		InternalDate: time.Now().Unix(),
+		HistoryId:    1,
+	}, nil).AnyTimes()
+
 	debug := func(msg string, args ...interface{}) { t.Logf("[REPO_DEBUG] "+msg, args...) }
 	t.Log("[DEBUG] TestGmailService_CachingE2E: starting")
 	db, cleanup := data.SetupTestDB(t)
@@ -26,8 +52,8 @@ func TestGmailService_CachingE2E(t *testing.T) {
 	defer cleanup()
 	repo := data.NewGmailMessageRepositoryFromPool(db.Pool)
 	t.Log("[DEBUG] NewGmailMessageRepositoryFromPool done")
-	svc := NewGmailService(repo)
-	t.Log("[DEBUG] NewGmailService done")
+	svc := NewGmailServiceWithAPI(repo, mockAPI)
+	t.Log("[DEBUG] NewGmailServiceWithAPI done")
 	ctx := context.Background()
 	userID := "user-e2e"
 
@@ -62,6 +88,7 @@ func TestGmailService_CachingE2E(t *testing.T) {
 	if err != nil {
 		t.Fatalf("FetchMessageContent cache hit failed: %v", err)
 	}
+	t.Logf("[DEBUG] First FetchMessageContent returned: %+v", content)
 	if content.Subject != "Cached Subject" {
 		t.Errorf("expected cached subject, got %s", content.Subject)
 	}
@@ -70,12 +97,17 @@ func TestGmailService_CachingE2E(t *testing.T) {
 	staleTime := time.Now().Add(-2 * time.Minute)
 	msg.CachedAt = staleTime
 	t.Log("[DEBUG] Upserting stale cached message")
-	_ = repo.UpsertMessage(testCtx, msg)
+	err = repo.UpsertMessage(testCtx, msg)
+	if err != nil {
+		t.Fatalf("UpsertMessage for stale cache failed: %v", err)
+	}
+	t.Logf("[DEBUG] Cached message after staleness: %+v", msg)
 	t.Log("[DEBUG] Fetching message content after staleness (should NOT hit Gmail API in test)")
 	content2, err := svc.FetchMessageContent(testCtx, tok, msgID)
 	if err != nil {
 		t.Fatalf("FetchMessageContent after staleness failed: %v", err)
 	}
+	t.Logf("[DEBUG] Second FetchMessageContent returned: %+v", content2)
 	if content2.Body != "Cached Body" {
 		t.Errorf("expected cached body, got %s", content2.Body)
 	}

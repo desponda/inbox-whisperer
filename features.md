@@ -2,6 +2,13 @@
 
 ## Completed Features
 
+### Backend Refactoring & Testability Improvements (2025-04-22)
+- Refactored Gmail message fetching and caching logic for clarity, maintainability, and testability.
+- Introduced dependency injection for Gmail API, enabling easy mocking and robust testing.
+- Standardized error handling for Gmail 404s with a dedicated helper (`isNotFoundError`).
+- Ensured consistent extraction of the Date field from both cached and freshly fetched messages.
+- All changes adhere to Go best practices and the project's design principles as described in `developing.md`.
+
 ### 1. OAuth2 Google Login & User Creation
 - Users can sign up and log in using Google OAuth2.
 - On first successful OAuth login, a user is created in the database and their token is stored.

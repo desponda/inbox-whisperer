@@ -4,6 +4,8 @@ import "github.com/desponda/inbox-whisperer/internal/data"
 
 import (
 	"context"
+	"crypto/rand"
+	"encoding/base64"
 	"encoding/json"
 	"net/http"
 	"strings"
@@ -42,9 +44,20 @@ func NewAuthHandler(cfg *config.AppConfig, userTokens data.UserTokenRepository) 
 
 // HandleLogin starts the OAuth2 flow
 func (h *AuthHandler) HandleLogin(w http.ResponseWriter, r *http.Request) {
-	state := "state-token" // TODO: generate/store per session for CSRF protection
+	// Generate a random state token for CSRF protection
+	state := generateRandomState(32)
+	session.SetSessionValue(w, r, "oauth_state", state)
 	url := h.OAuthConfig.AuthCodeURL(state, oauth2.AccessTypeOffline)
 	http.Redirect(w, r, url, http.StatusFound)
+}
+
+// generateRandomState generates a secure random string for OAuth2 state
+func generateRandomState(length int) string {
+	b := make([]byte, length)
+	if _, err := rand.Read(b); err != nil {
+		return "state-token-fallback"
+	}
+	return base64.URLEncoding.EncodeToString(b)
 }
 
 // HandleCallback handles the OAuth2 redirect from Google
@@ -56,7 +69,14 @@ func (h *AuthHandler) HandleCallback(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "missing code", http.StatusBadRequest)
 		return
 	}
-	// TODO: validate state param for CSRF
+	// Validate state param for CSRF protection
+	state := r.URL.Query().Get("state")
+	expectedState := session.GetSessionValue(r, "oauth_state")
+	if state == "" || expectedState == "" || state != expectedState {
+		log.Warn().Msg("Invalid or missing OAuth2 state parameter (possible CSRF)")
+		http.Error(w, "invalid state parameter", http.StatusBadRequest)
+		return
+	}
 	tok, err := exchangeCodeForToken(h, ctx, code)
 	if err != nil {
 		log.Error().Err(err).Msg("Failed to exchange code for token")

@@ -32,7 +32,7 @@ type GmailMessage struct {
 type GmailMessageRepository interface {
 	UpsertMessage(ctx context.Context, msg *GmailMessage) error
 	GetMessageByID(ctx context.Context, userID, gmailMessageID string) (*GmailMessage, error)
-	GetMessagesForUser(ctx context.Context, userID string, limit, offset int) ([]*GmailMessage, error) // legacy, wraps cursor version
+	GetMessagesForUser(ctx context.Context, userID string, limit, offset int) ([]*GmailMessage, error) // Legacy wrapper for cursor version
 	GetMessagesForUserCursor(ctx context.Context, userID string, limit int, afterInternalDate int64, afterMsgID string) ([]*GmailMessage, error)
 	DeleteMessagesForUser(ctx context.Context, userID string) error
 }
@@ -112,7 +112,7 @@ func (r *gmailMessageRepository) GetMessageByID(ctx context.Context, userID, gma
 	return &msg, nil
 }
 
-// GetMessagesForUser provides offset-based pagination for legacy compatibility (not recommended for large inboxes)
+// GetMessagesForUser provides offset-based pagination (legacy, not recommended for large inboxes)
 func (r *gmailMessageRepository) GetMessagesForUser(ctx context.Context, userID string, limit, offset int) ([]*GmailMessage, error) {
 	query := `SELECT id, user_id, gmail_message_id, thread_id, subject, sender, recipient, snippet, body, internal_date, history_id, cached_at, last_fetched_at, category, categorization_confidence, raw_json FROM gmail_messages WHERE user_id=$1 ORDER BY internal_date DESC, gmail_message_id DESC LIMIT $2 OFFSET $3`
 	rows, err := r.pool.Query(ctx, query, userID, limit, offset)

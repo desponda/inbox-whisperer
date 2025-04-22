@@ -32,11 +32,11 @@ func (s *UserService) DeleteUser(ctx context.Context, id string) error {
 	return s.repo.Delete(ctx, id)
 }
 
-// DeactivateUser performs a soft delete (sets Deactivated=true)
+// DeactivateUser marks a user as deactivated
 func (s *UserService) DeactivateUser(ctx context.Context, id string) error {
 	user, err := s.repo.GetByID(ctx, id)
 	if err != nil {
-		// If user not found, treat as successful delete (idempotent)
+		// Treat user not found as successful (idempotent)
 		return nil
 	}
 	if user.Deactivated {

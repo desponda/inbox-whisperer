@@ -1,19 +1,18 @@
 package config
 
 import (
-	"fmt"
 	"os"
+	"github.com/rs/zerolog/log"
 )
 
 // Config holds all configuration for the server
-// Add new fields as needed for DB, secrets, etc.
 type Config struct {
 	Port     string
 	DBUrl    string
 	LogLevel string
 }
 
-// Load loads configuration from environment variables, with sensible defaults.
+// Load configuration from environment variables with sensible defaults.
 func Load() (*Config, error) {
 	cfg := &Config{
 		Port:     getEnv("PORT", "8080"),
@@ -31,7 +30,7 @@ func getEnv(key, def string) string {
 	return def
 }
 
-// Print prints all config values for debugging
+// Print all config values for debugging
 func (c *Config) Print() {
-	fmt.Printf("Config: PORT=%s, DATABASE_URL=%s, LOG_LEVEL=%s\n", c.Port, c.DBUrl, c.LogLevel)
+	log.Info().Str("port", c.Port).Str("database_url", c.DBUrl).Str("log_level", c.LogLevel).Msg("Config loaded")
 }

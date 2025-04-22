@@ -4,11 +4,14 @@ go 1.24.2
 
 require (
 	github.com/go-chi/chi/v5 v5.2.1
+	github.com/golang/mock v1.6.0
 	github.com/google/uuid v1.6.0
 	github.com/jackc/pgx/v5 v5.7.4
 	github.com/rs/zerolog v1.34.0
 	github.com/testcontainers/testcontainers-go v0.36.0
 	github.com/testcontainers/testcontainers-go/modules/postgres v0.36.0
+	golang.org/x/oauth2 v0.29.0
+	google.golang.org/api v0.229.0
 )
 
 require (
@@ -33,7 +36,6 @@ require (
 	github.com/go-logr/stdr v1.2.2 // indirect
 	github.com/go-ole/go-ole v1.2.6 // indirect
 	github.com/gogo/protobuf v1.3.2 // indirect
-	github.com/golang/mock v1.6.0 // indirect
 	github.com/google/s2a-go v0.1.9 // indirect
 	github.com/googleapis/enterprise-certificate-proxy v0.3.6 // indirect
 	github.com/googleapis/gax-go/v2 v2.14.1 // indirect
@@ -71,11 +73,9 @@ require (
 	go.opentelemetry.io/otel/trace v1.35.0 // indirect
 	golang.org/x/crypto v0.37.0 // indirect
 	golang.org/x/net v0.39.0 // indirect
-	golang.org/x/oauth2 v0.29.0 // indirect
 	golang.org/x/sync v0.13.0 // indirect
 	golang.org/x/sys v0.32.0 // indirect
 	golang.org/x/text v0.24.0 // indirect
-	google.golang.org/api v0.229.0 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20250414145226-207652e42e2e // indirect
 	google.golang.org/grpc v1.71.1 // indirect
 	google.golang.org/protobuf v1.36.6 // indirect
