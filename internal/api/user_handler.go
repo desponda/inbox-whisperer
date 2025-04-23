@@ -2,7 +2,6 @@ package api
 
 import (
 	"net/http"
-	"encoding/json"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/desponda/inbox-whisperer/internal/service"
@@ -22,9 +21,18 @@ func (h *UserHandler) ListUsers(w http.ResponseWriter, r *http.Request) {
 // UpdateUser handles PUT /users/{id}
 // UpdateUser only allows updating safe fields (none in current model)
 func (h *UserHandler) UpdateUser(w http.ResponseWriter, r *http.Request) {
-	id := chi.URLParam(r, "id")
-	if id == "" {
-		RespondError(w, http.StatusBadRequest, "missing id")
+	id, err := ValidateIDParam(r)
+	if err != nil {
+		RespondError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	userID, err := ValidateAuth(r)
+	if err != nil {
+		RespondError(w, http.StatusUnauthorized, err.Error())
+		return
+	}
+	if id != userID {
+		RespondError(w, http.StatusForbidden, "forbidden")
 		return
 	}
 	var req struct {
@@ -41,16 +49,23 @@ func (h *UserHandler) UpdateUser(w http.ResponseWriter, r *http.Request) {
 // DeleteUser handles DELETE /users/{id}
 // DeleteUser performs a soft delete (deactivate)
 func (h *UserHandler) DeleteUser(w http.ResponseWriter, r *http.Request) {
-	id := chi.URLParam(r, "id")
-	if id == "" {
-		RespondError(w, http.StatusBadRequest, "missing id")
+	id, err := ValidateIDParam(r)
+	if err != nil {
+		RespondError(w, http.StatusBadRequest, err.Error())
 		return
 	}
-	// Soft delete: set deactivated flag
-	err := h.Service.DeactivateUser(r.Context(), id)
+	userID, err := ValidateAuth(r)
 	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		json.NewEncoder(w).Encode(map[string]string{"error": err.Error()})
+		RespondError(w, http.StatusUnauthorized, err.Error())
+		return
+	}
+	if id != userID {
+		RespondError(w, http.StatusForbidden, "forbidden")
+		return
+	}
+	err = h.Service.DeactivateUser(r.Context(), id)
+	if err != nil {
+		RespondError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
 	w.WriteHeader(http.StatusNoContent)
@@ -76,9 +91,18 @@ func RequireSameUser(next http.Handler) http.Handler {
 
 // GET /users/{id}
 func (h *UserHandler) GetUser(w http.ResponseWriter, r *http.Request) {
-	id := chi.URLParam(r, "id")
-	if id == "" {
-		RespondError(w, http.StatusBadRequest, "missing id")
+	id, err := ValidateIDParam(r)
+	if err != nil {
+		RespondError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	userID, err := ValidateAuth(r)
+	if err != nil {
+		RespondError(w, http.StatusUnauthorized, err.Error())
+		return
+	}
+	if id != userID {
+		RespondError(w, http.StatusForbidden, "forbidden")
 		return
 	}
 	user, err := h.Service.GetUser(r.Context(), id)

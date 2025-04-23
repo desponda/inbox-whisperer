@@ -14,7 +14,7 @@ import (
 var summaryCache sync.Map // per-user summary cache
 
 
-// MultiProviderEmailService implements EmailService and aggregates from all linked providers.
+
 type MultiProviderEmailService struct {
 	Factory *EmailProviderFactory
 }
@@ -23,9 +23,6 @@ func NewMultiProviderEmailService(factory *EmailProviderFactory) *MultiProviderE
 	return &MultiProviderEmailService{Factory: factory}
 }
 
-// FetchMessages aggregates summaries from all providers for the user.
-// EmailSummary is a provider-agnostic summary DTO
-// Use models.EmailSummary (moved to internal/models/email_summary.go)
 
 
 func (s *MultiProviderEmailService) FetchMessages(ctx context.Context, token *oauth2.Token) ([]models.EmailMessage, error) {

@@ -67,79 +67,91 @@ func (h *AuthHandler) HandleCallback(w http.ResponseWriter, r *http.Request) {
 
 	ctx := context.Background()
 	code := r.URL.Query().Get("code")
-	log.Debug().Msgf("HandleCallback: code param: %s", code)
 	if code == "" {
 		log.Warn().Msg("Missing code in callback")
 		http.Error(w, "missing code", http.StatusBadRequest)
 		return
 	}
-	// Validate state param for CSRF protection
+
 	state := r.URL.Query().Get("state")
 	expectedState := session.GetSessionValue(r, "oauth_state")
-	log.Debug().Msgf("HandleCallback: state param: %s, expectedState: %s", state, expectedState)
 	if state == "" || expectedState == "" || state != expectedState {
 		log.Warn().Msg("Invalid or missing OAuth2 state parameter (possible CSRF)")
 		http.Error(w, "invalid state parameter", http.StatusBadRequest)
 		return
 	}
+
 	tok, err := exchangeCodeForToken(h, ctx, code)
 	if err != nil {
 		log.Error().Err(err).Msg("Failed to exchange code for token")
 		http.Error(w, "token exchange failed: "+err.Error(), http.StatusInternalServerError)
 		return
 	}
-	userID, err := fetchGoogleUserID(ctx, tok, "https://www.googleapis.com/oauth2/v2/userinfo")
+
+	userID, email, err := getUserIDAndEmail(ctx, tok)
 	if err != nil {
-		log.Error().Err(err).Msg("Failed to fetch Google user ID")
+		log.Error().Err(err).Msg("Failed to fetch Google user ID/email")
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
-	// Support test patch: userID|email
-	email := userID // fallback
-	if sep := '|'; len(userID) > 0 && string(userID[0]) != "{" && string(userID[0]) != "[" && string(userID[0]) != "(" && string(userID[0]) != "<" {
-		if before, after, found := strings.Cut(userID, string(sep)); found {
-			userID = before
-			email = after
-		}
-	}
+	ensureUserExists(ctx, h.UserTokens, userID, email, tok)
 
-	// Create user in DB if not exists
-	db, ok := h.UserTokens.(interface{ GetByID(context.Context, string) (*models.User, error); Create(context.Context, *models.User) error })
-	if ok {
-		_, err := db.GetByID(ctx, userID)
-		if err != nil {
-			// Assume not found, create user
-			if email == userID && tok != nil {
-				// Try to fetch email from Google userinfo
-				client := oauth2.NewClient(ctx, oauth2.StaticTokenSource(tok))
-				resp, err := client.Get("https://www.googleapis.com/oauth2/v2/userinfo")
-				if err == nil && resp.StatusCode == 200 {
-					var profile struct {
-						Email string `json:"email"`
-					}
-					if err := json.NewDecoder(resp.Body).Decode(&profile); err == nil && profile.Email != "" {
-						email = profile.Email
-					}
-					resp.Body.Close()
-				}
-			}
-			db.Create(ctx, &models.User{
-				ID:        userID,
-				Email:     email,
-				CreatedAt: time.Now().UTC(),
-			})
-		}
-	}
-	// Store token in DB (persistent)
 	err = h.UserTokens.SaveUserToken(ctx, userID, tok)
 	if err != nil {
 		log.Error().Err(err).Msg("Failed to persist user token")
 		http.Error(w, "failed to persist user token", http.StatusInternalServerError)
 		return
 	}
-	// Store access token in session for immediate use
-	session.SetSession(w, r, userID, tok.AccessToken)
+
+	setSessionToken(w, r, userID, tok.AccessToken)
+	http.Redirect(w, r, "/", http.StatusFound)
+}
+
+func getUserIDAndEmail(ctx context.Context, tok *oauth2.Token) (string, string, error) {
+	userID, err := fetchGoogleUserID(ctx, tok, "https://www.googleapis.com/oauth2/v2/userinfo")
+	if err != nil {
+		return "", "", err
+	}
+	email := userID
+	if sep := '|'; len(userID) > 0 && !strings.ContainsAny(string(userID[0]), "[{(<") {
+		if before, after, found := strings.Cut(userID, string(sep)); found {
+			userID = before
+			email = after
+		}
+	}
+	return userID, email, nil
+}
+
+func ensureUserExists(ctx context.Context, userTokens data.UserTokenRepository, userID, email string, tok *oauth2.Token) {
+	db, ok := userTokens.(interface{ GetByID(context.Context, string) (*models.User, error); Create(context.Context, *models.User) error })
+	if !ok {
+		return
+	}
+	_, err := db.GetByID(ctx, userID)
+	if err == nil {
+		return
+	}
+	if email == userID && tok != nil {
+		client := oauth2.NewClient(ctx, oauth2.StaticTokenSource(tok))
+		resp, err := client.Get("https://www.googleapis.com/oauth2/v2/userinfo")
+		if err == nil && resp.StatusCode == 200 {
+			var profile struct { Email string `json:"email"` }
+			if err := json.NewDecoder(resp.Body).Decode(&profile); err == nil && profile.Email != "" {
+				email = profile.Email
+			}
+			resp.Body.Close()
+		}
+	}
+	db.Create(ctx, &models.User{
+		ID:        userID,
+		Email:     email,
+		CreatedAt: time.Now().UTC(),
+	})
+}
+
+func setSessionToken(w http.ResponseWriter, r *http.Request, userID, token string) {
+	session.SetSession(w, r, userID, token)
 	log.Info().Str("userID", userID).Msg("OAuth2 flow complete. Token stored in DB and session.")
 	w.WriteHeader(http.StatusOK)
 	w.Write([]byte("OAuth2 flow complete. Token stored in DB and session for user: " + userID))

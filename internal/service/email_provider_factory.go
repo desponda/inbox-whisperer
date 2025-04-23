@@ -8,7 +8,6 @@ import (
 	"github.com/desponda/inbox-whisperer/internal/service/gmail"
 )
 
-// EmailProvider is the cross-provider interface (re-exported for package-level use)
 type EmailProvider = gmail.EmailProvider
 
 type ProviderType string
@@ -55,7 +54,6 @@ func (f *EmailProviderFactory) LinkProvider(userID string, cfg ProviderConfig) {
 	f.linked[userID] = append(f.linked[userID], cfg)
 }
 
-// ProvidersForUser returns all providers for a user
 func (f *EmailProviderFactory) ProvidersForUser(ctx context.Context, userID string) ([]EmailProvider, error) {
 	f.mu.RLock()
 	linked := f.linked[userID]

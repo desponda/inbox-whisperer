@@ -10,6 +10,7 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/desponda/inbox-whisperer/internal/models"
+	"github.com/desponda/inbox-whisperer/internal/session"
 )
 
 type mockUserService struct {
@@ -98,8 +99,15 @@ func TestUserHandler_GetUser(t *testing.T) {
 				url += tc.id
 			}
 			req := httptest.NewRequest("GET", url, nil)
+			// Simulate authenticated session
+			sessionW := httptest.NewRecorder()
+			session.SetSession(sessionW, req, tc.id, "dummy-token")
+			for _, c := range sessionW.Result().Cookies() {
+				req.AddCookie(c)
+			}
 			w := httptest.NewRecorder()
-			r.ServeHTTP(w, req)
+			rWithSession := session.Middleware(r)
+			rWithSession.ServeHTTP(w, req)
 			if w.Code != tc.wantStatus {
 				t.Errorf("expected status %d, got %d", tc.wantStatus, w.Code)
 			}
@@ -128,8 +136,15 @@ func TestUserHandler_UpdateUser(t *testing.T) {
 	r.Put("/users/{id}", h.UpdateUser)
 	body, _ := json.Marshal(map[string]interface{}{})
 	req := httptest.NewRequest("PUT", "/users/a", bytes.NewReader(body))
+	// Simulate authenticated session
+	sessionW := httptest.NewRecorder()
+	session.SetSession(sessionW, req, "a", "dummy-token")
+	for _, c := range sessionW.Result().Cookies() {
+		req.AddCookie(c)
+	}
 	w := httptest.NewRecorder()
-	r.ServeHTTP(w, req)
+	rWithSession := session.Middleware(r)
+	rWithSession.ServeHTTP(w, req)
 	if w.Code != http.StatusBadRequest {
 		t.Errorf("expected status 400, got %d", w.Code)
 	}
@@ -156,8 +171,15 @@ func TestUserHandler_DeleteUser(t *testing.T) {
 	r := chi.NewRouter()
 	r.Delete("/users/{id}", h.DeleteUser)
 	req := httptest.NewRequest("DELETE", "/users/a", nil)
+	// Simulate authenticated session
+	sessionW := httptest.NewRecorder()
+	session.SetSession(sessionW, req, "a", "dummy-token")
+	for _, c := range sessionW.Result().Cookies() {
+		req.AddCookie(c)
+	}
 	w := httptest.NewRecorder()
-	r.ServeHTTP(w, req)
+	rWithSession := session.Middleware(r)
+	rWithSession.ServeHTTP(w, req)
 	if w.Code != http.StatusNoContent {
 		t.Errorf("expected status 204, got %d", w.Code)
 	}
@@ -190,8 +212,15 @@ func TestUserHandler_DeleteUserServiceError(t *testing.T) {
 	r := chi.NewRouter()
 	r.Delete("/users/{id}", h.DeleteUser)
 	req := httptest.NewRequest("DELETE", "/users/a", nil)
+	// Simulate authenticated session
+	sessionW := httptest.NewRecorder()
+	session.SetSession(sessionW, req, "a", "dummy-token")
+	for _, c := range sessionW.Result().Cookies() {
+		req.AddCookie(c)
+	}
 	w := httptest.NewRecorder()
-	r.ServeHTTP(w, req)
+	rWithSession := session.Middleware(r)
+	rWithSession.ServeHTTP(w, req)
 	if w.Code != http.StatusInternalServerError {
 		t.Errorf("expected status 500, got %d", w.Code)
 	}

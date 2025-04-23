@@ -27,7 +27,6 @@ type SessionData struct {
 	Values map[string]string // Arbitrary key-value pairs (e.g., oauth_state)
 }
 
-// Middleware manages session cookie and attaches user/token to context
 func Middleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		cookie, err := r.Cookie("session_id")
@@ -61,7 +60,6 @@ func ContextWithUserID(ctx context.Context, userID string) context.Context {
 	return context.WithValue(ctx, userIDKey, userID)
 }
 
-// SetSession stores user and token for a session
 func SetSession(w http.ResponseWriter, r *http.Request, userID, token string) {
 	cookie, err := r.Cookie("session_id")
 	var sessionID string
@@ -82,7 +80,6 @@ func SetSession(w http.ResponseWriter, r *http.Request, userID, token string) {
 	store.Unlock()
 }
 
-// GetToken retrieves the token from context
 func GetToken(ctx context.Context) string {
 	tok, _ := ctx.Value(tokenKey).(string)
 	return tok

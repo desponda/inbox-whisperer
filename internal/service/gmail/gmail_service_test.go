@@ -25,28 +25,6 @@ func mockToken() *oauth2.Token {
 }
 
 func TestGmailService_CachingE2E(t *testing.T) {
-	// ctrl := gomock.NewController(t)
-	// defer ctrl.Finish()
-
-	// mockAPI := NewMockGmailAPI(ctrl)
-	// mockCall := NewMockUsersMessagesGetCall(ctrl)
-	// mockAPI.EXPECT().UsersMessagesGet("me", "gmail_msg_123").Return(mockCall).AnyTimes()
-	// mockCall.EXPECT().Do(gomock.Any()).Return(&gmail.Message{
-	// 	Id: "gmail_msg_123",
-	// 	ThreadId: "thread_1",
-	// 	Snippet: "Hello world",
-	// 	Payload: &gmail.MessagePart{
-	// 		Headers: []*gmail.MessagePartHeader{
-	// 			{Name: "From", Value: "sender@example.com"},
-	// 			{Name: "To", Value: "rcpt@example.com"},
-	// 			{Name: "Subject", Value: "Cached Subject"},
-	// 			{Name: "Date", Value: "Wed, 01 Jan 2025 00:00:00 +0000"},
-	// 		},
-	// 		Body: &gmail.MessagePartBody{Data: "Q2FjaGVkIEJvZHk="},
-	// 	},
-	// 	InternalDate: time.Now().Unix(),
-	// 	HistoryId:    1,
-	// }, nil).AnyTimes()
 
 	debug := func(msg string, args ...interface{}) { t.Logf("[REPO_DEBUG] "+msg, args...) }
 	t.Log("[DEBUG] TestGmailService_CachingE2E: starting")

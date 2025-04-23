@@ -12,11 +12,13 @@ import (
 	"github.com/desponda/inbox-whisperer/internal/models"
 	"github.com/desponda/inbox-whisperer/internal/session"
 	"github.com/desponda/inbox-whisperer/internal/notify"
+	
 	"golang.org/x/oauth2"
 	"google.golang.org/api/gmail/v1"
 	"google.golang.org/api/option"
-
 )
+
+var ErrNotFound = errors.New("not found")
 
 // extractUserIDFromContext gets the user ID from context
 func extractUserIDFromContext(ctx context.Context) string {
@@ -126,7 +128,7 @@ func (s *GmailService) fetchGmailMessage(ctx context.Context, token *oauth2.Toke
 	msg, err := c.Do(ctx)
 	if err != nil {
 		if isNotFoundError(err) {
-			return nil, errors.New("not found")
+			return nil, ErrNotFound
 		}
 		return nil, err
 	}
@@ -147,7 +149,7 @@ func fetchGmailMessageClient(ctx context.Context, token *oauth2.Token, id string
 	msg, err := client.Users.Messages.Get("me", id).Format("full").Do()
 	if err != nil {
 		if isNotFoundError(err) {
-			return nil, errors.New("not found")
+			return nil, ErrNotFound
 		}
 		return nil, err
 	}

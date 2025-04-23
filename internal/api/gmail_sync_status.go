@@ -2,15 +2,14 @@ package api
 
 import (
 	"net/http"
-	"github.com/desponda/inbox-whisperer/internal/session"
 	"github.com/desponda/inbox-whisperer/internal/notify"
 )
 
 // GmailSyncStatusHandler returns sync status for the current user and clears it
 func GmailSyncStatusHandler(w http.ResponseWriter, r *http.Request) {
-	userID := session.GetUserID(r.Context())
-	if userID == "" {
-		w.WriteHeader(http.StatusUnauthorized)
+	userID, err := ValidateAuth(r)
+	if err != nil {
+		RespondError(w, http.StatusUnauthorized, err.Error())
 		return
 	}
 	if notify.CheckAndClearGmailSyncStatus(userID) {

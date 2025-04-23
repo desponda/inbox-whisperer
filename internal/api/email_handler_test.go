@@ -3,6 +3,7 @@ package api
 import (
 	"context"
 	"fmt"
+	"github.com/desponda/inbox-whisperer/internal/service/gmail"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -59,7 +60,7 @@ func TestFetchMessagesHandler_Authenticated_Success(t *testing.T) {
 func TestFetchMessagesHandler_ServiceError(t *testing.T) {
 	mockSvc := &mocks.MockEmailService{
 		FetchMessagesFunc: func(ctx context.Context, token *oauth2.Token) ([]models.EmailMessage, error) {
-			return nil, fmt.Errorf("not found")
+			return nil, gmail.ErrNotFound
 		},
 	}
 	h := NewEmailHandler(mockSvc, &mocks.MockUserTokenRepository{})

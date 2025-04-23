@@ -35,7 +35,6 @@ func (s *UserService) DeleteUser(ctx context.Context, id string) error {
 }
 
 
-// DeactivateUser marks a user as deactivated
 func (s *UserService) DeactivateUser(ctx context.Context, id string) error {
 	user, err := s.repo.GetByID(ctx, id)
 	if err != nil {

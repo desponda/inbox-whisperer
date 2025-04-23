@@ -7,15 +7,11 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-// DB wraps a pgxpool.Pool for database access
-// Add methods on *DB for queries and transactions
-// Use interfaces at the service layer for testability, not here
 
 type DB struct {
 	Pool *pgxpool.Pool
 }
 
-// New connects to the database using the given URL
 func New(ctx context.Context, dbURL string) (*DB, error) {
 	cfg, err := pgxpool.ParseConfig(dbURL)
 	if err != nil {
@@ -36,7 +32,6 @@ func New(ctx context.Context, dbURL string) (*DB, error) {
 	return &DB{Pool: pool}, nil
 }
 
-// Close closes the DB connection pool
 func (db *DB) Close() {
 	if db.Pool != nil {
 		db.Pool.Close()
