@@ -3,14 +3,14 @@ package api
 import (
 	"context"
 	"encoding/json"
-	"fmt"
-	"net/http"
 	"errors"
+	"net/http"
+	"strconv"
 
-	"github.com/go-chi/chi/v5"
 	"github.com/desponda/inbox-whisperer/internal/data"
 	"github.com/desponda/inbox-whisperer/internal/service"
 	gmail "github.com/desponda/inbox-whisperer/internal/service/gmail"
+	"github.com/go-chi/chi/v5"
 	"golang.org/x/oauth2"
 )
 
@@ -24,10 +24,17 @@ func NewEmailHandler(svc service.EmailService, userTokens data.UserTokenReposito
 }
 
 func (h *EmailHandler) FetchMessagesHandler(w http.ResponseWriter, r *http.Request) {
-	tok := r.Context().Value(ContextTokenKey).(*oauth2.Token)
+	tokVal := r.Context().Value(ContextTokenKey)
+	
+	tok, ok := tokVal.(*oauth2.Token)
+	if !ok || tok == nil {
+		http.Error(w, "not authenticated: no token in context", http.StatusUnauthorized)
+		return
+	}
 	ctx := h.extractPagination(r)
 	msgs, err := h.Service.FetchMessages(ctx, tok)
 	if err != nil {
+		
 		if errors.Is(err, gmail.ErrNotFound) {
 			http.Error(w, err.Error(), http.StatusNotFound)
 			return
@@ -45,9 +52,16 @@ func (h *EmailHandler) GetMessageContentHandler(w http.ResponseWriter, r *http.R
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	tok := r.Context().Value(ContextTokenKey).(*oauth2.Token)
+	tokVal := r.Context().Value(ContextTokenKey)
+	
+	tok, ok := tokVal.(*oauth2.Token)
+	if !ok || tok == nil {
+		http.Error(w, "not authenticated: no token in context", http.StatusUnauthorized)
+		return
+	}
 	msg, err := h.Service.FetchMessageContent(r.Context(), tok, id)
 	if err != nil {
+		
 		if err.Error() == "not found" {
 			http.Error(w, "email not found", http.StatusNotFound)
 			return
@@ -64,7 +78,10 @@ func (h *EmailHandler) extractPagination(r *http.Request) context.Context {
 	afterID := r.URL.Query().Get("after_id")
 	afterInternalDate := int64(0)
 	if v := r.URL.Query().Get("after_internal_date"); v != "" {
-		fmt.Sscanf(v, "%d", &afterInternalDate)
+		parsed, err := strconv.ParseInt(v, 10, 64)
+		if err == nil {
+			afterInternalDate = parsed
+		}
 	}
 	if afterID != "" && afterInternalDate > 0 {
 		ctx = context.WithValue(ctx, "after_id", afterID)

@@ -2,7 +2,6 @@ package api
 
 import (
 	"net/http"
-
 	"github.com/go-chi/chi/v5"
 	"github.com/desponda/inbox-whisperer/internal/service"
 	"github.com/desponda/inbox-whisperer/internal/session"
@@ -26,7 +25,14 @@ func (h *UserHandler) UpdateUser(w http.ResponseWriter, r *http.Request) {
 		RespondError(w, http.StatusBadRequest, err.Error())
 		return
 	}
-	userID := r.Context().Value(ContextUserIDKey).(string)
+	userIDVal := r.Context().Value(ContextUserIDKey)
+	
+	userID, ok := userIDVal.(string)
+	if !ok || userID == "" {
+		
+		RespondError(w, http.StatusUnauthorized, "not authenticated: no userID in context")
+		return
+	}
 	if id != userID {
 		RespondError(w, http.StatusForbidden, "forbidden")
 		return
@@ -50,7 +56,14 @@ func (h *UserHandler) DeleteUser(w http.ResponseWriter, r *http.Request) {
 		RespondError(w, http.StatusBadRequest, err.Error())
 		return
 	}
-	userID := r.Context().Value(ContextUserIDKey).(string)
+	userIDVal := r.Context().Value(ContextUserIDKey)
+	
+	userID, ok := userIDVal.(string)
+	if !ok || userID == "" {
+		
+		RespondError(w, http.StatusUnauthorized, "not authenticated: no userID in context")
+		return
+	}
 	if id != userID {
 		RespondError(w, http.StatusForbidden, "forbidden")
 		return
@@ -80,7 +93,6 @@ func RequireSameUser(next http.Handler) http.Handler {
 	})
 }
 
-
 // GET /users/{id}
 func (h *UserHandler) GetUser(w http.ResponseWriter, r *http.Request) {
 	id, err := ValidateIDParam(r)
@@ -88,7 +100,14 @@ func (h *UserHandler) GetUser(w http.ResponseWriter, r *http.Request) {
 		RespondError(w, http.StatusBadRequest, err.Error())
 		return
 	}
-	userID := r.Context().Value(ContextUserIDKey).(string)
+	userIDVal := r.Context().Value(ContextUserIDKey)
+	
+	userID, ok := userIDVal.(string)
+	if !ok || userID == "" {
+		
+		RespondError(w, http.StatusUnauthorized, "not authenticated: no userID in context")
+		return
+	}
 	if id != userID {
 		RespondError(w, http.StatusForbidden, "forbidden")
 		return

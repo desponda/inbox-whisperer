@@ -17,7 +17,6 @@ import (
 	"github.com/go-chi/chi/v5"
 	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/google"
-	"github.com/rs/zerolog/log"
 )
 
 // AuthHandler holds the OAuth2 config and provides HTTP handlers for auth endpoints
@@ -46,8 +45,10 @@ func NewAuthHandler(cfg *config.AppConfig, userTokens data.UserTokenRepository) 
 func (h *AuthHandler) HandleLogin(w http.ResponseWriter, r *http.Request) {
 	// Generate a random state token for CSRF protection
 	state := generateRandomState(32)
+	
 	session.SetSessionValue(w, r, "oauth_state", state)
 	url := h.OAuthConfig.AuthCodeURL(state, oauth2.AccessTypeOffline)
+	
 	http.Redirect(w, r, url, http.StatusFound)
 }
 
@@ -62,13 +63,13 @@ func generateRandomState(length int) string {
 
 // HandleCallback handles the OAuth2 redirect from Google
 func (h *AuthHandler) HandleCallback(w http.ResponseWriter, r *http.Request) {
-	log.Debug().Msgf("HandleCallback: cookies: %+v", r.Cookies())
-	log.Debug().Msgf("HandleCallback: URL query: %v", r.URL.RawQuery)
+	
+	
 
 	ctx := context.Background()
 	code := r.URL.Query().Get("code")
 	if code == "" {
-		log.Warn().Msg("Missing code in callback")
+		
 		http.Error(w, "missing code", http.StatusBadRequest)
 		return
 	}
@@ -76,21 +77,19 @@ func (h *AuthHandler) HandleCallback(w http.ResponseWriter, r *http.Request) {
 	state := r.URL.Query().Get("state")
 	expectedState := session.GetSessionValue(r, "oauth_state")
 	if state == "" || expectedState == "" || state != expectedState {
-		log.Warn().Msg("Invalid or missing OAuth2 state parameter (possible CSRF)")
+		
 		http.Error(w, "invalid state parameter", http.StatusBadRequest)
 		return
 	}
 
 	tok, err := exchangeCodeForToken(h, ctx, code)
 	if err != nil {
-		log.Error().Err(err).Msg("Failed to exchange code for token")
 		http.Error(w, "token exchange failed: "+err.Error(), http.StatusInternalServerError)
 		return
 	}
 
 	userID, email, err := getUserIDAndEmail(ctx, tok)
 	if err != nil {
-		log.Error().Err(err).Msg("Failed to fetch Google user ID/email")
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -99,7 +98,6 @@ func (h *AuthHandler) HandleCallback(w http.ResponseWriter, r *http.Request) {
 
 	err = h.UserTokens.SaveUserToken(ctx, userID, tok)
 	if err != nil {
-		log.Error().Err(err).Msg("Failed to persist user token")
 		http.Error(w, "failed to persist user token", http.StatusInternalServerError)
 		return
 	}
@@ -151,8 +149,9 @@ func ensureUserExists(ctx context.Context, userTokens data.UserTokenRepository, 
 }
 
 func setSessionToken(w http.ResponseWriter, r *http.Request, userID, token string) {
+	
 	session.SetSession(w, r, userID, token)
-	log.Info().Str("userID", userID).Msg("OAuth2 flow complete. Token stored in DB and session.")
+	
 	w.WriteHeader(http.StatusOK)
 	w.Write([]byte("OAuth2 flow complete. Token stored in DB and session for user: " + userID))
 }
@@ -161,10 +160,8 @@ func setSessionToken(w http.ResponseWriter, r *http.Request, userID, token strin
 var exchangeCodeForToken = func(h *AuthHandler, ctx context.Context, code string) (*oauth2.Token, error) {
 	tok, err := h.OAuthConfig.Exchange(ctx, code)
 	if err != nil {
-		log.Error().Err(err).Msg("OAuth2 token exchange failed")
 		return nil, err
 	}
-	log.Info().Msg("OAuth2 token exchange successful")
 	return tok, nil
 }
 

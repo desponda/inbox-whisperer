@@ -3,16 +3,16 @@ package api
 import (
 	"context"
 	"fmt"
-	"github.com/desponda/inbox-whisperer/internal/service/gmail"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 
+	"github.com/desponda/inbox-whisperer/internal/service/gmail"
+
+	"github.com/desponda/inbox-whisperer/internal/mocks"
+	"github.com/desponda/inbox-whisperer/internal/models"
 	"github.com/go-chi/chi/v5"
 	"github.com/stretchr/testify/require"
-	"github.com/desponda/inbox-whisperer/internal/models"
-	"github.com/desponda/inbox-whisperer/internal/mocks"
-	"github.com/desponda/inbox-whisperer/internal/session"
 	"golang.org/x/oauth2"
 )
 
@@ -47,8 +47,9 @@ func TestFetchMessagesHandler_Authenticated_Success(t *testing.T) {
 	h := NewEmailHandler(mockSvc, &mocks.MockUserTokenRepository{})
 
 	r := httptest.NewRequest("GET", "/api/email/fetch", nil)
-	ctx := session.ContextWithUserID(r.Context(), "user1")
-	r = r.WithContext(ctx)
+	ctx := context.WithValue(r.Context(), ContextUserIDKey, "user1")
+ctx = context.WithValue(ctx, ContextTokenKey, &oauth2.Token{AccessToken: "test-token"})
+r = r.WithContext(ctx)
 	w := httptest.NewRecorder()
 
 	h.FetchMessagesHandler(w, r)
@@ -66,8 +67,9 @@ func TestFetchMessagesHandler_ServiceError(t *testing.T) {
 	h := NewEmailHandler(mockSvc, &mocks.MockUserTokenRepository{})
 
 	r := httptest.NewRequest("GET", "/api/email/fetch", nil)
-	ctx := session.ContextWithUserID(r.Context(), "user1")
-	r = r.WithContext(ctx)
+	ctx := context.WithValue(r.Context(), ContextUserIDKey, "user1")
+ctx = context.WithValue(ctx, ContextTokenKey, &oauth2.Token{AccessToken: "test-token"})
+r = r.WithContext(ctx)
 	w := httptest.NewRecorder()
 
 	h.FetchMessagesHandler(w, r)
@@ -85,8 +87,9 @@ func TestGetMessageContentHandler_Authenticated_Success(t *testing.T) {
 	h := NewEmailHandler(mockSvc, &mocks.MockUserTokenRepository{})
 
 	r := httptest.NewRequest("GET", "/api/email/messages/1", nil)
-	ctx := session.ContextWithUserID(r.Context(), "user1")
-	r = r.WithContext(ctx)
+	ctx := context.WithValue(r.Context(), ContextUserIDKey, "user1")
+ctx = context.WithValue(ctx, ContextTokenKey, &oauth2.Token{AccessToken: "test-token"})
+r = r.WithContext(ctx)
 	w := httptest.NewRecorder()
 
 	// Simulate chi URL param
@@ -109,8 +112,9 @@ func TestGetMessageContentHandler_ServiceError(t *testing.T) {
 	h := NewEmailHandler(mockSvc, &mocks.MockUserTokenRepository{})
 
 	r := httptest.NewRequest("GET", "/api/email/messages/1", nil)
-	ctx := session.ContextWithUserID(r.Context(), "user1")
-	r = r.WithContext(ctx)
+	ctx := context.WithValue(r.Context(), ContextUserIDKey, "user1")
+ctx = context.WithValue(ctx, ContextTokenKey, &oauth2.Token{AccessToken: "test-token"})
+r = r.WithContext(ctx)
 	w := httptest.NewRecorder()
 
 	chiCtx := chi.NewRouteContext()

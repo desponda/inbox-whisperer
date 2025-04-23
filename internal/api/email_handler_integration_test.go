@@ -9,24 +9,22 @@ import (
 	"github.com/desponda/inbox-whisperer/internal/api"
 	"github.com/desponda/inbox-whisperer/internal/data"
 	"github.com/desponda/inbox-whisperer/internal/mocks"
-	"github.com/desponda/inbox-whisperer/internal/service"
 	"github.com/desponda/inbox-whisperer/internal/models"
+	"github.com/desponda/inbox-whisperer/internal/service"
 	"github.com/desponda/inbox-whisperer/internal/session"
 	"github.com/go-chi/chi/v5"
-	"golang.org/x/oauth2"
 	"github.com/stretchr/testify/require"
+	"golang.org/x/oauth2"
 )
-
 
 func setupTestRouterWithEmail(userTokens data.UserTokenRepository, svc service.EmailService) http.Handler {
 	r := chi.NewRouter()
-	r.Use(session.Middleware) // Ensure session is processed
 	r.Use(api.AuthMiddleware)
 	r.Use(api.TokenMiddleware(userTokens))
 	h := api.NewEmailHandler(svc, userTokens)
 	r.Get("/api/email/messages", h.FetchMessagesHandler)
 	r.Get("/api/email/messages/{id}", h.GetMessageContentHandler)
-	return r
+	return session.Middleware(r)
 }
 
 func TestEmailAPI_Integration_Unauthenticated(t *testing.T) {
@@ -51,18 +49,29 @@ func TestEmailAPI_Integration_MissingToken(t *testing.T) {
 }
 
 type mockNoTokenUserTokenRepository struct{}
-func (m *mockNoTokenUserTokenRepository) GetUserToken(ctx context.Context, userID string) (*oauth2.Token, error) { return nil, nil }
-func (m *mockNoTokenUserTokenRepository) SaveUserToken(ctx context.Context, userID string, token *oauth2.Token) error { return nil }
 
+func (m *mockNoTokenUserTokenRepository) GetUserToken(ctx context.Context, userID string) (*oauth2.Token, error) {
+	return nil, nil
+}
+func (m *mockNoTokenUserTokenRepository) SaveUserToken(ctx context.Context, userID string, token *oauth2.Token) error {
+	return nil
+}
 
 func TestEmailAPI_Integration_Success(t *testing.T) {
-	userTokens := &mocks.MockUserTokenRepository{}
-	emailSvc := &mocks.MockEmailService{
-		FetchMessagesFunc: func(ctx context.Context, token *oauth2.Token) ([]models.EmailMessage, error) {
-			return []models.EmailMessage{{ID: 123, Subject: "Test"}}, nil
-		},
-	}
-	r := setupTestRouterWithEmail(userTokens, emailSvc)
+	userTokens := &mocks.MockUserTokenRepository{
+	GetUserTokenFunc: func(ctx context.Context, userID string) (*oauth2.Token, error) {
+		if userID == "user1" {
+			return &oauth2.Token{AccessToken: "mock-token"}, nil
+		}
+		return nil, nil
+	},
+}
+emailSvc := &mocks.MockEmailService{
+	FetchMessagesFunc: func(ctx context.Context, token *oauth2.Token) ([]models.EmailMessage, error) {
+		return []models.EmailMessage{{ID: 123, Subject: "Test"}}, nil
+	},
+}
+r := setupTestRouterWithEmail(userTokens, emailSvc)
 	w := httptest.NewRecorder()
 
 	// Simulate a valid session using the session package helper
@@ -78,5 +87,3 @@ func TestEmailAPI_Integration_Success(t *testing.T) {
 	resp := w.Result()
 	require.Equal(t, http.StatusOK, resp.StatusCode)
 }
-
-

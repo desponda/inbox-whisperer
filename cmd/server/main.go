@@ -130,4 +130,3 @@ func setupGracefulShutdown(srv *http.Server) {
 		}
 	}()
 }
-

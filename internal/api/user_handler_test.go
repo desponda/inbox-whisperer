@@ -8,17 +8,17 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/go-chi/chi/v5"
 	"github.com/desponda/inbox-whisperer/internal/models"
 	"github.com/desponda/inbox-whisperer/internal/session"
+	"github.com/go-chi/chi/v5"
 )
 
 type mockUserService struct {
-	GetUserFunc    func(ctx context.Context, id string) (*models.User, error)
-	CreateUserFunc func(ctx context.Context, user *models.User) error
-	ListUsersFunc  func(ctx context.Context) ([]*models.User, error)
-	UpdateUserFunc func(ctx context.Context, user *models.User) error
-	DeleteUserFunc func(ctx context.Context, id string) error
+	GetUserFunc        func(ctx context.Context, id string) (*models.User, error)
+	CreateUserFunc     func(ctx context.Context, user *models.User) error
+	ListUsersFunc      func(ctx context.Context) ([]*models.User, error)
+	UpdateUserFunc     func(ctx context.Context, user *models.User) error
+	DeleteUserFunc     func(ctx context.Context, id string) error
 	DeactivateUserFunc func(ctx context.Context, id string) error
 }
 
@@ -105,6 +105,9 @@ func TestUserHandler_GetUser(t *testing.T) {
 			for _, c := range sessionW.Result().Cookies() {
 				req.AddCookie(c)
 			}
+			// Inject user ID into context for authenticated session
+			ctx := context.WithValue(req.Context(), ContextUserIDKey, tc.id)
+			req = req.WithContext(ctx)
 			w := httptest.NewRecorder()
 			rWithSession := session.Middleware(r)
 			rWithSession.ServeHTTP(w, req)
@@ -142,6 +145,9 @@ func TestUserHandler_UpdateUser(t *testing.T) {
 	for _, c := range sessionW.Result().Cookies() {
 		req.AddCookie(c)
 	}
+	// Inject user ID into context for authenticated session
+	ctx := context.WithValue(req.Context(), ContextUserIDKey, "a")
+	req = req.WithContext(ctx)
 	w := httptest.NewRecorder()
 	rWithSession := session.Middleware(r)
 	rWithSession.ServeHTTP(w, req)
@@ -177,6 +183,9 @@ func TestUserHandler_DeleteUser(t *testing.T) {
 	for _, c := range sessionW.Result().Cookies() {
 		req.AddCookie(c)
 	}
+	// Inject user ID into context for authenticated session
+	ctx := context.WithValue(req.Context(), ContextUserIDKey, "a")
+	req = req.WithContext(ctx)
 	w := httptest.NewRecorder()
 	rWithSession := session.Middleware(r)
 	rWithSession.ServeHTTP(w, req)
@@ -218,6 +227,9 @@ func TestUserHandler_DeleteUserServiceError(t *testing.T) {
 	for _, c := range sessionW.Result().Cookies() {
 		req.AddCookie(c)
 	}
+	// Inject user ID into context for authenticated session
+	ctx := context.WithValue(req.Context(), ContextUserIDKey, "a")
+	req = req.WithContext(ctx)
 	w := httptest.NewRecorder()
 	rWithSession := session.Middleware(r)
 	rWithSession.ServeHTTP(w, req)
