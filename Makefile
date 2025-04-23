@@ -1,5 +1,35 @@
 # Makefile for Inbox Whisperer
 
+# ==== Frontend (React UI) ====
+.PHONY: ui-install ui-dev ui-build ui-lint ui-test ui-coverage ui-generate-api-client
+
+ui-install:
+	cd ui && npm install
+
+ui-dev:
+	cd ui && npm run dev
+
+ui-build:
+	cd ui && npm run build
+
+ui-lint:
+	cd ui && npm run lint
+
+ui-test:
+	cd ui && npm test
+
+ui-coverage:
+	cd ui && npm run coverage || true
+
+ui-generate-api-client:
+	cd ui && npm run generate:api || echo 'API client generation script not found.'
+
+# Unified lint/test
+.PHONY: lint-all test-all
+lint-all: lint ui-lint
+
+test-all: test ui-test
+
 .PHONY: db-up db-init
 
 # Makefile for Inbox Whisperer DB management

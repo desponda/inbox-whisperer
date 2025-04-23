@@ -1,4 +1,4 @@
-package service
+package gmail
 
 import (
 	"context"
@@ -9,7 +9,9 @@ import (
 	"encoding/json"
 
 	"github.com/desponda/inbox-whisperer/internal/data"
+	"github.com/desponda/inbox-whisperer/internal/models"
 	"github.com/desponda/inbox-whisperer/internal/session"
+	"github.com/desponda/inbox-whisperer/internal/notify"
 	"golang.org/x/oauth2"
 	"google.golang.org/api/gmail/v1"
 	"google.golang.org/api/option"
@@ -35,17 +37,17 @@ type UsersMessagesGetCall interface {
 }
 
 type GmailService struct {
-	Repo data.GmailMessageRepository
+	Repo data.EmailMessageRepository
 	GmailAPI GmailAPI // optional: for testing
 }
 
 
-func NewGmailService(repo data.GmailMessageRepository) *GmailService {
+func NewGmailService(repo data.EmailMessageRepository) *GmailService {
 	return &GmailService{Repo: repo, GmailAPI: nil}
 }
 
 // NewGmailServiceWithAPI injects a mock GmailAPI (for tests)
-func NewGmailServiceWithAPI(repo data.GmailMessageRepository, api GmailAPI) *GmailService {
+func NewGmailServiceWithAPI(repo data.EmailMessageRepository, api GmailAPI) *GmailService {
 	return &GmailService{Repo: repo, GmailAPI: api}
 }
 
@@ -68,70 +70,46 @@ type MessageSummary struct {
 }
 
 // MessageContent is the full content of a Gmail message
-type MessageContent struct {
-	ID      string `json:"id"`
-	Subject string `json:"subject"`
-	From    string `json:"from"`
-	To      string `json:"to"`
-	Date    string `json:"date"`
-	Body    string `json:"body"`
-}
+
 
 // FetchMessageContent fetches the full content of a Gmail message by ID, using cache if fresh.
-func (s *GmailService) FetchMessageContent(ctx context.Context, token *oauth2.Token, id string) (*MessageContent, error) {
+func (s *GmailService) FetchMessageContent(ctx context.Context, token *oauth2.Token, id string) (*models.EmailMessage, error) {
 	userID := extractUserIDFromContext(ctx)
-	if content, ok := s.tryCachedMessageContent(ctx, userID, id); ok {
-		return content, nil
+	cached, err := s.Repo.GetMessageByID(ctx, userID, id)
+	if err == nil && cached != nil && time.Since(cached.CachedAt) < time.Minute {
+		return cached, nil
 	}
 	msg, err := s.fetchGmailMessage(ctx, token, id)
 	if err != nil {
 		return nil, err
 	}
-	content := buildMessageContent(msg)
+	dbMsg := &models.EmailMessage{
+		UserID:         userID,
+		EmailMessageID: msg.Id,
+		ThreadID:       msg.ThreadId,
+		Subject:        getHeader(msg.Payload.Headers, "Subject"),
+		Sender:         getHeader(msg.Payload.Headers, "From"),
+		Recipient:      getHeader(msg.Payload.Headers, "To"),
+		Snippet:        msg.Snippet,
+		Body:           extractPlainTextBody(msg.Payload),
+		InternalDate:   msg.InternalDate,
+		Date:           getHeader(msg.Payload.Headers, "Date"),
+		HistoryID:      int64(msg.HistoryId),
+		CachedAt:       time.Now(),
+		RawJSON:        mustMarshalRawJSON(msg),
+	}
 	// Update cache asynchronously (ignore error)
-	go s.cacheGmailMessage(ctx, userID, msg)
-	return content, nil
+	go s.Repo.UpsertMessage(ctx, dbMsg)
+	return dbMsg, nil
 }
 
-// tryCachedMessageContent returns cached MessageContent if available and fresh
-func (s *GmailService) tryCachedMessageContent(ctx context.Context, userID, id string) (*MessageContent, bool) {
-	cached, err := s.Repo.GetMessageByID(ctx, userID, id)
-	if err != nil || cached == nil || time.Since(cached.CachedAt) >= time.Minute {
-		return nil, false
+// mustMarshalRawJSON marshals a Gmail message to json.RawMessage (for RawJSON field), returns empty on error
+func mustMarshalRawJSON(msg *gmail.Message) json.RawMessage {
+	b, err := json.Marshal(msg)
+	if err != nil {
+		return json.RawMessage([]byte("{}"))
 	}
-	date := extractDateFromCachedMessage(cached)
-	return &MessageContent{
-		ID:      cached.GmailMessageID,
-		Subject: cached.Subject,
-		From:    cached.Sender,
-		To:      cached.Recipient,
-		Date:    date,
-		Body:    cached.Body,
-	}, true
-}
-
-// extractDateFromCachedMessage attempts to extract the Date header from cached.RawJSON, else returns empty string
-func extractDateFromCachedMessage(cached *data.GmailMessage) string {
-	if cached == nil || len(cached.RawJSON) == 0 {
-		return ""
-	}
-	var raw struct {
-		Payload struct {
-			Headers []struct {
-				Name  string `json:"name"`
-				Value string `json:"value"`
-			} `json:"headers"`
-		} `json:"payload"`
-	}
-	if err := json.Unmarshal(cached.RawJSON, &raw); err != nil {
-		return ""
-	}
-	for _, h := range raw.Payload.Headers {
-		if strings.EqualFold(h.Name, "Date") {
-			return h.Value
-		}
-	}
-	return ""
+	return b
 }
 
 // fetchGmailMessage fetches a Gmail message using the Gmail API or injected mock
@@ -176,79 +154,103 @@ func fetchGmailMessageClient(ctx context.Context, token *oauth2.Token, id string
 	return msg, nil
 }
 
-// buildMessageContent constructs MessageContent from a Gmail message
-func buildMessageContent(msg *gmail.Message) *MessageContent {
-	from := getHeader(msg.Payload.Headers, "From")
-	to := getHeader(msg.Payload.Headers, "To")
-	subject := getHeader(msg.Payload.Headers, "Subject")
-	date := getHeader(msg.Payload.Headers, "Date")
-	body := extractPlainTextBody(msg.Payload)
-	return &MessageContent{
-		ID:      msg.Id,
-		Subject: subject,
-		From:    from,
-		To:      to,
-		Date:    date,
-		Body:    body,
-	}
-}
 
-// cacheGmailMessage updates the Gmail message cache in the DB
-func (s *GmailService) cacheGmailMessage(ctx context.Context, userID string, msg *gmail.Message) {
-	dbMsg := &data.GmailMessage{
-		UserID:         userID,
-		GmailMessageID: msg.Id,
-		ThreadID:       msg.ThreadId,
-		Subject:        getHeader(msg.Payload.Headers, "Subject"),
-		Sender:         getHeader(msg.Payload.Headers, "From"),
-		Recipient:      getHeader(msg.Payload.Headers, "To"),
-		Snippet:        msg.Snippet,
-		Body:           extractPlainTextBody(msg.Payload),
-		InternalDate:   msg.InternalDate,
-		HistoryID:      int64(msg.HistoryId),
-		CachedAt:       time.Now(),
-	}
-	_ = s.Repo.UpsertMessage(ctx, dbMsg)
-}
 
-// FetchMessages fetches the latest 10 messages (with cursor-based pagination)
-func (s *GmailService) FetchMessages(ctx context.Context, token *oauth2.Token) ([]MessageSummary, error) {
+
+// FetchMessages returns only cached summaries (no full content/body) for a fast inbox load.
+// It triggers a background sync with Gmail to fetch new/updated summaries.
+// After sync, subsequent calls will see fresh data. Full content is fetched via FetchMessageContent.
+func (s *GmailService) FetchMessages(ctx context.Context, token *oauth2.Token) ([]models.EmailMessage, error) {
 	userID := extractUserIDFromContext(ctx)
 	afterID, _ := ctx.Value("after_id").(string)
 	afterInternalDate, _ := ctx.Value("after_internal_date").(int64)
 	pageSize := 10 // could be param
+
+	// 1. Return cached summaries instantly
 	msgs, err := s.fetchUserMessages(ctx, userID, pageSize, afterInternalDate, afterID)
 	if err != nil {
 		return nil, err
 	}
-	return buildMessageSummaries(msgs), nil
+	result := make([]models.EmailMessage, len(msgs))
+	for i, m := range msgs {
+		if m != nil {
+			// Only summary fields; body is omitted
+			result[i] = models.EmailMessage{
+				EmailMessageID: m.EmailMessageID,
+				ThreadID:       m.ThreadID,
+				Subject:        m.Subject,
+				Sender:         m.Sender,
+				Snippet:        m.Snippet,
+				InternalDate:   m.InternalDate,
+				Date:           m.Date,
+			}
+		}
+	}
+
+	// 2. Trigger background sync for fresh Gmail data
+	if token != nil {
+		go func() {
+			err := s.syncLatestSummariesFromGmail(ctx, token, userID, pageSize)
+			if err != nil {
+				// Log error, but do not block user experience
+			}
+		}()
+	}
+
+	return result, nil
 }
 
-// fetchUserMessages fetches messages for a user with cursor-based pagination
-func (s *GmailService) fetchUserMessages(ctx context.Context, userID string, pageSize int, afterInternalDate int64, afterID string) ([]*data.GmailMessage, error) {
+
+// fetchUserMessages fetches messages for a user with cursor-based pagination (from DB only)
+func (s *GmailService) fetchUserMessages(ctx context.Context, userID string, pageSize int, afterInternalDate int64, afterID string) ([]*models.EmailMessage, error) {
 	if afterID != "" && afterInternalDate > 0 {
 		return s.Repo.GetMessagesForUserCursor(ctx, userID, pageSize, afterInternalDate, afterID)
 	}
 	return s.Repo.GetMessagesForUserCursor(ctx, userID, pageSize, 0, "")
 }
 
-// buildMessageSummaries builds MessageSummary slices from []*data.GmailMessage
-func buildMessageSummaries(msgs []*data.GmailMessage) []MessageSummary {
-	summaries := make([]MessageSummary, 0, len(msgs))
-	for _, m := range msgs {
-		summaries = append(summaries, MessageSummary{
-			ID:      m.GmailMessageID,
-			ThreadID: m.ThreadID,
-			Snippet:  m.Snippet,
-			From:     m.Sender,
-			Subject:  m.Subject,
-			InternalDate: m.InternalDate,
-			CursorAfterID: m.GmailMessageID,
-			CursorAfterInternalDate: m.InternalDate,
-		})
+// syncLatestSummariesFromGmail fetches the latest message summaries from Gmail API and upserts them into the DB.
+// This is run in the background after each inbox load for best UX.
+func (s *GmailService) syncLatestSummariesFromGmail(ctx context.Context, token *oauth2.Token, userID string, pageSize int) error {
+	// Use Gmail API's Users.Messages.List to get latest message IDs
+	client, err := getGmailClient(ctx, token)
+	if err != nil {
+		return err
 	}
-	return summaries
+	listCall := client.Users.Messages.List("me").MaxResults(int64(pageSize)).LabelIds("INBOX").Q("")
+	resp, err := listCall.Do()
+	if err != nil {
+		return err
+	}
+	for _, m := range resp.Messages {
+		// Fetch summary (minimal fields, not full body)
+		msg, err := client.Users.Messages.Get("me", m.Id).Format("metadata").Do()
+		if err != nil {
+			continue // skip errored messages
+		}
+		dbMsg := &models.EmailMessage{
+			UserID:         userID,
+			EmailMessageID: msg.Id,
+			ThreadID:       msg.ThreadId,
+			Subject:        getHeader(msg.Payload.Headers, "Subject"),
+			Sender:         getHeader(msg.Payload.Headers, "From"),
+			Snippet:        msg.Snippet,
+			InternalDate:   msg.InternalDate,
+			Date:           getHeader(msg.Payload.Headers, "Date"),
+			CachedAt:       time.Now(),
+			RawJSON:        mustMarshalRawJSON(msg),
+		}
+		_ = s.Repo.UpsertMessage(ctx, dbMsg)
+	}
+	// Notify client (poll endpoint) after sync completes for instant refresh
+	userID = extractUserIDFromContext(ctx)
+	if userID != "" {
+		notify.SetGmailSyncStatus(userID)
+	}
+	return nil
 }
+
+
 
 // getHeader returns the value for a given header name (case-insensitive)
 func getHeader(headers []*gmail.MessagePartHeader, name string) string {

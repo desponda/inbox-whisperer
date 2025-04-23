@@ -1,5 +1,15 @@
 # Features
 
+## Active Feature
+
+### MVP React UI (2025-04-22)
+See `features/mvp-ui-react.md` for implementation plan and checklist.
+
+## Paused Features
+
+### Gmail Integration & AI Categorization
+See `features/gmail-integration-ai-categorization.md` for details.
+
 ## Completed Features
 
 ### Backend Refactoring & Testability Improvements (2025-04-22)

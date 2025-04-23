@@ -2,6 +2,8 @@ package service
 
 import (
 	"context"
+	"log"
+	"errors"
 	"github.com/desponda/inbox-whisperer/internal/data"
 	"github.com/desponda/inbox-whisperer/internal/models"
 )
@@ -32,18 +34,35 @@ func (s *UserService) DeleteUser(ctx context.Context, id string) error {
 	return s.repo.Delete(ctx, id)
 }
 
+
 // DeactivateUser marks a user as deactivated
 func (s *UserService) DeactivateUser(ctx context.Context, id string) error {
 	user, err := s.repo.GetByID(ctx, id)
 	if err != nil {
-		// Treat user not found as successful (idempotent)
-		return nil
+		if errors.Is(err, context.DeadlineExceeded) || errors.Is(err, context.Canceled) {
+			log.Printf("DeactivateUser: fatal error on GetByID for user %s: %v", id, err)
+			return err
+		}
+		// Only treat 'not found' as idempotent
+		if err.Error() == "not found" {
+			log.Printf("DeactivateUser: user %s not found (idempotent)", id)
+			return nil
+		}
+		log.Printf("DeactivateUser: unexpected error on GetByID for user %s: %v", id, err)
+		return err
 	}
 	if user.Deactivated {
+		log.Printf("DeactivateUser: user %s already deactivated (idempotent)", id)
 		return nil // already deactivated
 	}
 	user.Deactivated = true
-	return s.repo.Update(ctx, user)
+	err = s.repo.Update(ctx, user)
+	if err != nil {
+		log.Printf("DeactivateUser: error updating user %s: %v", id, err)
+		return err
+	}
+	log.Printf("DeactivateUser: user %s deactivated successfully", id)
+	return nil
 }
 
 func NewUserService(repo data.UserRepository) UserServiceInterface {

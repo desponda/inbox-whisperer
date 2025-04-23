@@ -8,6 +8,50 @@ info:
 servers:
   - url: http://localhost:8080
 paths:
+  /auth/login:
+    get:
+      summary: Start Google OAuth2 login
+      description: Redirects the user to Google's OAuth2 consent screen. Sets up session state for CSRF protection.
+      responses:
+        '302':
+          description: Redirect to Google OAuth2
+        '500':
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /auth/callback:
+    get:
+      summary: OAuth2 callback handler
+      description: Handles the Google OAuth2 redirect. Exchanges code for token, creates user if needed, and sets session.
+      parameters:
+        - in: query
+          name: code
+          required: true
+          schema:
+            type: string
+        - in: query
+          name: state
+          required: true
+          schema:
+            type: string
+      responses:
+        '302':
+          description: Redirect to frontend on success
+        '400':
+          description: Invalid or missing state/code
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
   /api/gmail/fetch:
     get:
       summary: Fetch user's emails from Gmail

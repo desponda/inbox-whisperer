@@ -67,7 +67,7 @@ This feature tracks the next phase of backend development for Inbox Whisperer, f
 - Next: Add tests for handlers and service unit tests.
 
 ### 6. CI & Quality
-- [ ] Add Makefile targets for lint, test, and build
+- [x] Add Makefile targets for lint, test, and build (see Makefile for unified backend/frontend targets)
 - [ ] Set up GitHub Actions for CI
 
 ---

@@ -29,6 +29,10 @@ func New(ctx context.Context, dbURL string) (*DB, error) {
 	if err != nil {
 		return nil, err
 	}
+	if err := pool.Ping(ctx); err != nil {
+		pool.Close()
+		return nil, err
+	}
 	return &DB{Pool: pool}, nil
 }
 

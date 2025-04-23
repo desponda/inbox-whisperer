@@ -1,10 +1,13 @@
 # Gmail Integration & AI Categorization Backend
 
+> **Note (2025-04-23):**
+> MVP React UI implementation is now underway (see `features/mvp-ui-react.md`). Backend and session test infrastructure are complete and ready for frontend work. AI categorization will resume after MVP UI milestones are met.
+
 This feature tracks the implementation of Gmail integration and AI-powered email categorization for Inbox Whisperer.
 
 ## Overview
 - Securely connect to Gmail using OAuth2.
-- Fetch user emails via Gmail API.
+- Fetch user emails via a generic EmailService (Gmail is one provider).
 - Use AI to categorize emails into actionable groups (Promotions/Ads, To Review, Important, Deferred).
 - Expose REST API endpoints for frontend to trigger fetch/categorization and retrieve categorized emails.
 
@@ -20,19 +23,19 @@ This feature tracks the implementation of Gmail integration and AI-powered email
 - [x] Store and refresh access tokens securely (per user) — user_tokens table and repository implemented.
 - [x] Document setup for local and production (redirect URIs, credentials) — see README and config files.
 
-### 2. Gmail API Fetching
-- [x] Implement service to fetch emails from Gmail API (using user's token) — `/api/gmail/fetch` endpoint implemented and tested.
+### 2. Email Service Fetching (Gmail Provider)
+- [x] Implement generic EmailService with Gmail as a provider (using user's token) — `/api/email/fetch` endpoint implemented and tested.
 - [x] Endpoint to get full content of a single email (`/api/gmail/messages/{id}`) for display
 - [x] Store fetched emails in database (raw and/or normalized form) — **DB schema and repository for message caching implemented (2025-04-22)**
 - [x] Refactored backend Gmail fetching/caching logic for clarity, maintainability, and testability (2025-04-22)
-- [x] Introduced dependency injection for Gmail API (enables robust mocking/testing)
+- [x] Introduced dependency injection for EmailService, allowing robust mocking/testing and easy provider swapping (Gmail, etc.)
 - [x] Standardized error handling for Gmail 404s with helper function
 - [x] Ensured Date field is consistently extracted from both cached and fresh Gmail messages
 - [ ] Handle pagination, rate limits, and partial syncs.
 
 #### [Draft] Gmail Message Caching Strategy
 - All fetched Gmail messages (summaries and full content) are cached in the `gmail_messages` table, keyed by user and Gmail message ID.
-- The backend will check the cache before making Gmail API calls, using a freshness policy (e.g., 1 minute TTL or Gmail historyId/internalDate for staleness detection).
+- The backend will check the cache before making provider API calls (e.g., Gmail), using a freshness policy (e.g., 1 minute TTL or provider-specific staleness detection).
 - If a message is not cached or is stale, the backend will fetch from Gmail, update the cache, and return the result.
 - This reduces API quota usage, improves latency, and enables future features like offline/partial access and AI categorization persistence.
 - The repository pattern is used to abstract DB access for Gmail messages, supporting upsert, fetch, and delete operations.

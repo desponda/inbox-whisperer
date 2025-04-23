@@ -83,7 +83,7 @@ func setupRouter(db *data.DB, cfg *config.AppConfig) http.Handler {
 	api.RegisterAuthRoutes(r, cfg, db)
 	// Only register Gmail API endpoints if db is not nil (prevents nil pointer dereference in tests)
 	if db != nil {
-		api.RegisterGmailRoutes(r, db, db)
+		api.RegisterEmailRoutes(r, db, db)
 	}
 
 	h := api.NewUserHandler(service.NewUserService(db))

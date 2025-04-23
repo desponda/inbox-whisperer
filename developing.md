@@ -9,10 +9,18 @@ Inbox Whisperer is a suite of AI-powered tools designed to help users achieve an
 - After login, users can fetch their emails (list)
 - Users can view the content of a specific email
 - All endpoints are described in OpenAPI and the spec is always kept up-to-date
+- **Frontend is being built as a React SPA, using strict best practices, a UI framework, and an auto-generated OpenAPI client.**
 
 ## Core Workflow
 
 1. **Email Fetching**: The app securely connects to Gmail and fetches the user's emails.
+
+### Email Fetching Best Practices
+- **Inbox loads instantly from DB cache:** When a user loads the inbox, the backend returns cached email summaries from the database for a fast, snappy experience.
+- **Background sync:** Simultaneously, the backend triggers a background sync with Gmail to fetch new/updated summaries (using the Gmail API's list/metadata endpoints). The cache is updated in the background.
+- **Summaries vs. Full Content:** The summary endpoint (`FetchMessages`) returns only minimal fields (subject, sender, snippet, date, etc.)—never the full body/content. The full content is fetched only via a separate endpoint (`FetchMessageContent`) and only for the selected message.
+- **Client updates:** After sync, the client can poll or receive a push notification to refresh the inbox view with new data.
+
 2. **Categorization**: Each email is automatically categorized using AI into one of four actionable groups:
    - **Promotions/Ads (FYI)**: Marketing emails, advertisements, and newsletters—content the user likely doesn't want to open or act on.
    - **To Review**: Emails the user probably wants to read, but that do not require a response (e.g., updates, reports, notifications).

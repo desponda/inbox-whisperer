@@ -62,8 +62,12 @@ func generateRandomState(length int) string {
 
 // HandleCallback handles the OAuth2 redirect from Google
 func (h *AuthHandler) HandleCallback(w http.ResponseWriter, r *http.Request) {
+	log.Debug().Msgf("HandleCallback: cookies: %+v", r.Cookies())
+	log.Debug().Msgf("HandleCallback: URL query: %v", r.URL.RawQuery)
+
 	ctx := context.Background()
 	code := r.URL.Query().Get("code")
+	log.Debug().Msgf("HandleCallback: code param: %s", code)
 	if code == "" {
 		log.Warn().Msg("Missing code in callback")
 		http.Error(w, "missing code", http.StatusBadRequest)
@@ -72,6 +76,7 @@ func (h *AuthHandler) HandleCallback(w http.ResponseWriter, r *http.Request) {
 	// Validate state param for CSRF protection
 	state := r.URL.Query().Get("state")
 	expectedState := session.GetSessionValue(r, "oauth_state")
+	log.Debug().Msgf("HandleCallback: state param: %s, expectedState: %s", state, expectedState)
 	if state == "" || expectedState == "" || state != expectedState {
 		log.Warn().Msg("Invalid or missing OAuth2 state parameter (possible CSRF)")
 		http.Error(w, "invalid state parameter", http.StatusBadRequest)
@@ -80,7 +85,7 @@ func (h *AuthHandler) HandleCallback(w http.ResponseWriter, r *http.Request) {
 	tok, err := exchangeCodeForToken(h, ctx, code)
 	if err != nil {
 		log.Error().Err(err).Msg("Failed to exchange code for token")
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		http.Error(w, "token exchange failed: "+err.Error(), http.StatusInternalServerError)
 		return
 	}
 	userID, err := fetchGoogleUserID(ctx, tok, "https://www.googleapis.com/oauth2/v2/userinfo")

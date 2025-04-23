@@ -13,11 +13,7 @@ type UserTokenRepository interface {
 	GetUserToken(ctx context.Context, userID string) (*oauth2.Token, error)
 }
 
-type UserToken struct {
-	UserID    string
-	TokenJSON string
-	UpdatedAt time.Time
-}
+
 
 func (db *DB) SaveUserToken(ctx context.Context, userID string, token *oauth2.Token) error {
 	tokBytes, err := json.Marshal(token)

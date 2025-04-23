@@ -3,27 +3,38 @@ package data
 import (
 	"context"
 	"fmt"
+	"os"
+	"path/filepath"
 	"testing"
 	"time"
 
+	"github.com/golang-migrate/migrate/v4"
+	_ "github.com/golang-migrate/migrate/v4/source/file"
+	_ "github.com/golang-migrate/migrate/v4/database/postgres"
 	"github.com/jackc/pgx/v5/pgxpool"
-	"github.com/testcontainers/testcontainers-go/modules/postgres"
+	postgrescontainer "github.com/testcontainers/testcontainers-go/modules/postgres"
 	"github.com/testcontainers/testcontainers-go/wait"
 	"github.com/testcontainers/testcontainers-go"
 )
 
 // SetupTestDB starts a Postgres container and returns a DB and cleanup func
+// fileExists is a helper to check if a file exists
+func fileExists(path string) bool {
+	_, err := os.Stat(path)
+	return err == nil
+}
+
 func SetupTestDB(t *testing.T) (*DB, func()) {
 	log := func(msg string, args ...interface{}) {
 		fmt.Printf("[SetupTestDB] "+msg+"\n", args...)
 	}
 	ctx := context.Background()
 	log("Starting postgres test container...")
-	pgContainer, err := postgres.RunContainer(ctx,
-		postgres.WithDatabase("testdb"),
-		postgres.WithUsername("testuser"),
-		postgres.WithPassword("testpass"),
-		testcontainers.WithWaitStrategy(wait.ForListeningPort("5432/tcp").WithStartupTimeout(60 * time.Second)),
+	pgContainer, err := postgrescontainer.RunContainer(ctx,
+		postgrescontainer.WithDatabase("testdb"),
+		postgrescontainer.WithUsername("testuser"),
+		postgrescontainer.WithPassword("testpass"),
+		testcontainers.WithWaitStrategy(wait.ForListeningPort("5432/tcp").WithStartupTimeout(90 * time.Second)),
 	)
 	if err != nil {
 		log("FAILED to start postgres container: %v", err)
@@ -39,59 +50,51 @@ func SetupTestDB(t *testing.T) (*DB, func()) {
 		t.Fatalf("failed to get connection string: %v", err)
 	}
 
-	log("Connecting to Postgres test DB via pgxpool...")
-	pool, err := pgxpool.New(ctx, dsn)
-	if err != nil {
+	// Retry connecting to pgxpool up to 5 times
+	var pool *pgxpool.Pool
+	for i := 0; i < 5; i++ {
+		log("Connecting to Postgres test DB via pgxpool (attempt %d)...", i+1)
+		pool, err = pgxpool.New(ctx, dsn)
+		if err == nil {
+			// Try to ping
+			pingErr := pool.Ping(ctx)
+			if pingErr == nil {
+				log("Connected to test DB via pgxpool")
+				break
+			} else {
+				log("Ping failed: %v", pingErr)
+			}
+		}
 		log("FAILED to connect to test db: %v", err)
-		t.Fatalf("failed to connect to test db: %v", err)
-	} else {
-		log("Connected to test DB via pgxpool")
+		time.Sleep(2 * time.Second)
+	}
+	if pool == nil || err != nil {
+		t.Fatalf("failed to connect to test db after retries: %v", err)
 	}
 
-	// Create users table
-	_, err = pool.Exec(ctx, `CREATE TABLE IF NOT EXISTS users (
-		id TEXT PRIMARY KEY,
-		email TEXT NOT NULL,
-		created_at TIMESTAMP NOT NULL
-	)`)
-	if err != nil {
-		t.Fatalf("failed to create users table: %v", err)
+	// Use golang-migrate to run all migrations
+	// All migrations must use golang-migrate's .up.sql/.down.sql format and be placed in the migrations/ directory at repo root.
+	cwd, _ := os.Getwd()
+	migrationDir := cwd
+	for !fileExists(filepath.Join(migrationDir, "go.mod")) && migrationDir != "/" {
+		migrationDir = filepath.Dir(migrationDir)
 	}
-
-	// Create user_tokens table (from migration)
-	_, err = pool.Exec(ctx, `CREATE TABLE IF NOT EXISTS user_tokens (
-		user_id TEXT PRIMARY KEY,
-		token_json TEXT NOT NULL,
-		updated_at TIMESTAMP NOT NULL DEFAULT now()
-	)`)
-	if err != nil {
-		t.Fatalf("failed to create user_tokens table: %v", err)
+	migrationDir = filepath.Join(migrationDir, "migrations")
+	if _, err := os.Stat(migrationDir); err != nil {
+		t.Fatalf("failed to find golang-migrate migrations directory at %s: %v", migrationDir, err)
 	}
-
-	// Create gmail_messages table (from migration)
-	_, err = pool.Exec(ctx, `CREATE TABLE IF NOT EXISTS gmail_messages (
-		id SERIAL PRIMARY KEY,
-		user_id VARCHAR(255) NOT NULL,
-		gmail_message_id VARCHAR(255) NOT NULL,
-		thread_id VARCHAR(255),
-		subject TEXT,
-		sender TEXT,
-		recipient TEXT,
-		snippet TEXT,
-		body TEXT,
-		internal_date BIGINT,
-		history_id BIGINT,
-		cached_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-		last_fetched_at TIMESTAMPTZ,
-		category VARCHAR(64),
-		categorization_confidence FLOAT,
-		raw_json JSONB,
-		UNIQUE(user_id, gmail_message_id)
-	);
-	CREATE INDEX IF NOT EXISTS idx_gmail_messages_user_msg ON gmail_messages(user_id, gmail_message_id);
-	`)
+	log("Applying migrations from: %s", migrationDir)
+	m, err := migrate.New(
+		"file://"+migrationDir,
+		dsn,
+	)
 	if err != nil {
-		t.Fatalf("failed to create gmail_messages table: %v", err)
+		t.Fatalf("failed to create migrate instance: %v", err)
+	}
+	err = m.Up()
+	if err != nil && err.Error() != "no change" && err != migrate.ErrNoChange {
+		fmt.Printf("[SetupTestDB] MIGRATION ERROR: %+v\n", err)
+		t.Fatalf("failed to apply migrations: %v", err)
 	}
 
 	db := &DB{Pool: pool}

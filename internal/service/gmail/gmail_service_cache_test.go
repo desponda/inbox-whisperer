@@ -1,11 +1,12 @@
-package service
+package gmail
 
 import (
 	"context"
+	"github.com/desponda/inbox-whisperer/internal/data"
 	"testing"
 	"time"
 
-	"github.com/desponda/inbox-whisperer/internal/data"
+	"github.com/desponda/inbox-whisperer/internal/models"
 	"github.com/desponda/inbox-whisperer/internal/session"
 )
 
@@ -13,7 +14,7 @@ import (
 func TestGmailService_Caching(t *testing.T) {
 	dbWrapper, cleanup := data.SetupTestDB(t)
 	defer cleanup()
-	repo := data.NewGmailMessageRepositoryFromPool(dbWrapper.Pool)
+	repo := data.NewEmailMessageRepositoryFromPool(dbWrapper.Pool)
 	ctx := context.Background()
 	userID := "user123"
 	msgID := "gmail_msg_1"
@@ -21,9 +22,9 @@ func TestGmailService_Caching(t *testing.T) {
 	_ = NewGmailService(repo) // for completeness, but not used in this unit test
 
 	// Insert a fresh message (cache hit)
-	msg := &data.GmailMessage{
+	msg := &models.EmailMessage{
 		UserID:         userID,
-		GmailMessageID: msgID,
+		EmailMessageID: msgID,
 		Subject:        "Cached Subject",
 		Body:           "Cached Body",
 		CachedAt:       time.Now(),

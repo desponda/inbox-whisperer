@@ -8,7 +8,7 @@ import (
 	context "context"
 	reflect "reflect"
 
-	service "github.com/desponda/inbox-whisperer/internal/service"
+	"github.com/desponda/inbox-whisperer/internal/models"
 	gomock "github.com/golang/mock/gomock"
 	oauth2 "golang.org/x/oauth2"
 )
@@ -37,10 +37,10 @@ func (m *MockGmailServiceInterface) EXPECT() *MockGmailServiceInterfaceMockRecor
 }
 
 // FetchMessageContent mocks base method.
-func (m *MockGmailServiceInterface) FetchMessageContent(ctx context.Context, token *oauth2.Token, id string) (*service.MessageContent, error) {
+func (m *MockGmailServiceInterface) FetchMessageContent(ctx context.Context, token *oauth2.Token, id string) (*models.EmailMessage, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "FetchMessageContent", ctx, token, id)
-	ret0, _ := ret[0].(*service.MessageContent)
+	ret0, _ := ret[0].(*models.EmailMessage)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -52,10 +52,10 @@ func (mr *MockGmailServiceInterfaceMockRecorder) FetchMessageContent(ctx, token,
 }
 
 // FetchMessages mocks base method.
-func (m *MockGmailServiceInterface) FetchMessages(ctx context.Context, token *oauth2.Token) ([]service.MessageSummary, error) {
+func (m *MockGmailServiceInterface) FetchMessages(ctx context.Context, token *oauth2.Token) ([]models.EmailMessage, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "FetchMessages", ctx, token)
-	ret0, _ := ret[0].([]service.MessageSummary)
+	ret0, _ := ret[0].([]models.EmailMessage)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
