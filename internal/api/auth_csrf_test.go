@@ -52,11 +52,15 @@ func TestHandleCallback_CSRFProtection(t *testing.T) {
 	mux.HandleFunc("/setstate", func(w http.ResponseWriter, r *http.Request) {
 		// Only create the session
 		session.SetSession(w, r, "testuser", "testtoken")
-		w.Write([]byte("ok"))
+		if _, err := w.Write([]byte("ok")); err != nil {
+		t.Fatalf("failed to write response: %v", err)
+	}
 	})
 mux.HandleFunc("/setstatevalue", func(w http.ResponseWriter, r *http.Request) {
 		session.SetSessionValue(w, r, "oauth_state", "goodstate")
-		w.Write([]byte("ok"))
+		if _, err := w.Write([]byte("ok")); err != nil {
+		t.Fatalf("failed to write response: %v", err)
+	}
 	})
 	mux.HandleFunc("/auth/callback", func(w http.ResponseWriter, r *http.Request) {
 		h.HandleCallback(w, r)

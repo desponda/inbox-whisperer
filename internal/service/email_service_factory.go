@@ -11,6 +11,9 @@ import (
 	"github.com/desponda/inbox-whisperer/internal/service/gmail"
 )
 
+type CtxKeyUserID struct{}
+type CtxKeyLimit struct{}
+
 var summaryCache sync.Map // per-user summary cache
 
 
@@ -26,13 +29,20 @@ func NewMultiProviderEmailService(factory *EmailProviderFactory) *MultiProviderE
 
 
 func (s *MultiProviderEmailService) FetchMessages(ctx context.Context, token *oauth2.Token) ([]models.EmailMessage, error) {
-	userID := ctx.Value("user_id").(string)
+	userIDVal := ctx.Value(CtxKeyUserID{})
+if userIDVal == nil {
+	return nil, fmt.Errorf("userID context key missing")
+}
+userID, ok := userIDVal.(string)
+if !ok {
+	return nil, fmt.Errorf("userID context key not a string")
+}
 	providers, err := s.Factory.ProvidersForUser(ctx, userID)
 	if err != nil {
 		return nil, err
 	}
 	limit := 10
-if l, ok := ctx.Value("limit").(int); ok && l > 0 {
+if l, ok := ctx.Value(CtxKeyLimit{}).(int); ok && l > 0 {
 	limit = l
 }
 params := gmail.FetchParams{Limit: limit} // limit extracted from context, default 10
@@ -70,7 +80,7 @@ params := gmail.FetchParams{Limit: limit} // limit extracted from context, defau
 	sort.Slice(result, func(i, j int) bool { return result[i].InternalDate > result[j].InternalDate })
 	// Caching summary results for efficiency
 	cacheKey := userID
-	if l, ok := ctx.Value("limit").(int); ok && l > 0 {
+	if l, ok := ctx.Value(CtxKeyLimit{}).(int); ok && l > 0 {
 		cacheKey = fmt.Sprintf("%s:%d", userID, l)
 	}
 	type cacheEntry struct {
@@ -108,7 +118,14 @@ final := make([]models.EmailMessage, len(result))
 
 // FetchMessageContent fetches the full message from the right provider.
 func (s *MultiProviderEmailService) FetchMessageContent(ctx context.Context, token *oauth2.Token, id string) (*models.EmailMessage, error) {
-	userID := ctx.Value("user_id").(string)
+	userIDVal := ctx.Value(CtxKeyUserID{})
+if userIDVal == nil {
+	return nil, fmt.Errorf("userID context key missing")
+}
+userID, ok := userIDVal.(string)
+if !ok {
+	return nil, fmt.Errorf("userID context key not a string")
+}
 	providers, err := s.Factory.ProvidersForUser(ctx, userID)
 	if err != nil {
 		return nil, err

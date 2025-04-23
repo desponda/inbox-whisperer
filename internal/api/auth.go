@@ -141,11 +141,13 @@ func ensureUserExists(ctx context.Context, userTokens data.UserTokenRepository, 
 			resp.Body.Close()
 		}
 	}
-	db.Create(ctx, &models.User{
+	if err := db.Create(ctx, &models.User{
 		ID:        userID,
 		Email:     email,
 		CreatedAt: time.Now().UTC(),
-	})
+	}); err != nil {
+		return
+	}
 }
 
 func setSessionToken(w http.ResponseWriter, r *http.Request, userID, token string) {
@@ -153,7 +155,10 @@ func setSessionToken(w http.ResponseWriter, r *http.Request, userID, token strin
 	session.SetSession(w, r, userID, token)
 	
 	w.WriteHeader(http.StatusOK)
-	w.Write([]byte("OAuth2 flow complete. Token stored in DB and session for user: " + userID))
+	if _, err := w.Write([]byte("OAuth2 flow complete. Token stored in DB and session for user: " + userID)); err != nil {
+    http.Error(w, "failed to write response", http.StatusInternalServerError)
+    return
+}
 }
 
 // exchangeCodeForToken exchanges an OAuth2 code for a token

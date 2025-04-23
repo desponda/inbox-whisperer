@@ -36,7 +36,9 @@ func TestServerStartupWithValidConfig(t *testing.T) {
 		t.Fatalf("failed to create temp file: %v", err)
 	}
 	defer os.Remove(f.Name())
-	f.WriteString(cfgText)
+	if _, err := f.WriteString(cfgText); err != nil {
+		t.Fatalf("failed to write config text: %v", err)
+	}
 	f.Close()
 
 	cfg, err := config.LoadConfig(f.Name())

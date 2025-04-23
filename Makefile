@@ -12,6 +12,9 @@
 #   ui-coverage         Generate frontend coverage report
 #   ui-generate-api-client  Generate TypeScript API client from OpenAPI spec
 #   lint                Lint backend Go code
+#   vet                 Run go vet static analysis
+#   staticcheck         Run staticcheck static analysis
+#   lint-strict         Run all Go lint/static checks (lint, vet, staticcheck)
 #   test                Run backend Go tests
 #   dev-up              Start DB and apply migrations (local/dev)
 #   migrate-create      Create a new DB migration
@@ -46,7 +49,7 @@ ui-generate-api-client:
 	cd ui && npm run generate:api || echo 'API client generation script not found.'
 
 # Unified lint/test
-.PHONY: lint-all test-all help clean
+.PHONY: lint-all test-all help clean vet staticcheck lint-strict
 lint-all: lint ui-lint
 
 test-all: test ui-test
@@ -99,9 +102,20 @@ migrate-create:
 	@read -p "Migration name: " name; migrate create -dir ./migrations -ext sql $$name
 
 # Lint the codebase using golangci-lint (idempotent)
-.PHONY: lint
+.PHONY: lint vet staticcheck lint-strict
 lint:
 	golangci-lint run ./...
+
+# Run go vet static analysis
+vet:
+	go vet ./...
+
+# Run staticcheck static analysis (requires staticcheck to be installed)
+staticcheck:
+	staticcheck ./...
+
+# Run all Go lint/static checks
+lint-strict: lint vet staticcheck
 
 # Run all tests (idempotent)
 .PHONY: test

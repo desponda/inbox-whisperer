@@ -8,8 +8,12 @@ import (
 	"golang.org/x/oauth2"
 )
 
+type ctxKey string
 
-
+const (
+	ctxKeyUserID ctxKey = "user_id"
+	ctxKeyLimit  ctxKey = "limit"
+)
 
 type FetchParams struct {
 	AfterID           string
@@ -19,7 +23,6 @@ type FetchParams struct {
 
 type EmailProvider interface {
 	FetchSummaries(ctx context.Context, userID string, params FetchParams) ([]models.EmailSummary, error)
-
 	FetchMessage(ctx context.Context, userToken interface{}, messageID string) (*models.EmailMessage, error)
 }
 
@@ -32,8 +35,8 @@ func NewGmailProvider(svc *GmailService) *GmailProvider {
 }
 
 func (g *GmailProvider) FetchSummaries(ctx context.Context, userID string, params FetchParams) ([]models.EmailSummary, error) {
-	ctx = context.WithValue(ctx, "user_id", userID)
-	ctx = context.WithValue(ctx, "limit", params.Limit)
+	ctx = context.WithValue(ctx, ctxKeyUserID, userID)
+	ctx = context.WithValue(ctx, ctxKeyLimit, params.Limit)
 	msgs, err := g.Service.FetchMessages(ctx, nil)
 	if err != nil {
 		return nil, err

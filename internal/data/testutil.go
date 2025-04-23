@@ -30,7 +30,8 @@ func SetupTestDB(t *testing.T) (*DB, func()) {
 	}
 	ctx := context.Background()
 	log("Starting postgres test container...")
-	pgContainer, err := postgrescontainer.RunContainer(ctx,
+	pgContainer, err := postgrescontainer.Run(ctx,
+		"postgres:13",
 		postgrescontainer.WithDatabase("testdb"),
 		postgrescontainer.WithUsername("testuser"),
 		postgrescontainer.WithPassword("testpass"),

@@ -2,11 +2,12 @@ package gmail
 
 import (
 	"context"
-	"strings"
 	"encoding/base64"
-	"time"
-	"errors"
 	"encoding/json"
+	"errors"
+	"log"
+	"strings"
+	"time"
 
 	"github.com/desponda/inbox-whisperer/internal/data"
 	"github.com/desponda/inbox-whisperer/internal/models"
@@ -100,8 +101,12 @@ func (s *GmailService) FetchMessageContent(ctx context.Context, token *oauth2.To
 		CachedAt:       time.Now(),
 		RawJSON:        mustMarshalRawJSON(msg),
 	}
-	// Update cache asynchronously (ignore error)
-	go s.Repo.UpsertMessage(ctx, dbMsg)
+	// Update cache asynchronously (log error if any)
+	go func() {
+		if err := s.Repo.UpsertMessage(ctx, dbMsg); err != nil {
+			log.Printf("failed to upsert message: %v", err)
+		}
+	}()
 	return dbMsg, nil
 }
 
@@ -121,11 +126,7 @@ func (s *GmailService) fetchGmailMessage(ctx context.Context, token *oauth2.Toke
 		return fetchGmailMessageClient(ctx, token, id)
 	}
 	call := s.GmailAPI.UsersMessagesGet("me", id)
-	c, ok := call.(interface{ Do(context.Context) (*gmail.Message, error) })
-	if !ok {
-		return nil, errors.New("mock or injected GmailAPI does not implement Do(ctx)")
-	}
-	msg, err := c.Do(ctx)
+	msg, err := call.Do(ctx)
 	if err != nil {
 		if isNotFoundError(err) {
 			return nil, ErrNotFound
@@ -159,13 +160,16 @@ func fetchGmailMessageClient(ctx context.Context, token *oauth2.Token, id string
 
 
 
+type CtxKeyAfterID struct{}
+type CtxKeyAfterInternalDate struct{}
+
 // FetchMessages returns only cached summaries (no full content/body) for a fast inbox load.
 // It triggers a background sync with Gmail to fetch new/updated summaries.
 // After sync, subsequent calls will see fresh data. Full content is fetched via FetchMessageContent.
 func (s *GmailService) FetchMessages(ctx context.Context, token *oauth2.Token) ([]models.EmailMessage, error) {
 	userID := extractUserIDFromContext(ctx)
-	afterID, _ := ctx.Value("after_id").(string)
-	afterInternalDate, _ := ctx.Value("after_internal_date").(int64)
+	afterID, _ := ctx.Value(CtxKeyAfterID{}).(string)
+	afterInternalDate, _ := ctx.Value(CtxKeyAfterInternalDate{}).(int64)
 	pageSize := 10 // could be param
 
 	// 1. Return cached summaries instantly
@@ -192,10 +196,8 @@ func (s *GmailService) FetchMessages(ctx context.Context, token *oauth2.Token) (
 	// 2. Trigger background sync for fresh Gmail data
 	if token != nil {
 		go func() {
-			err := s.syncLatestSummariesFromGmail(ctx, token, userID, pageSize)
-			if err != nil {
-				// Log error, but do not block user experience
-			}
+			_ = s.syncLatestSummariesFromGmail(ctx, token, userID, pageSize)
+			// Log error, but do not block user experience
 		}()
 	}
 

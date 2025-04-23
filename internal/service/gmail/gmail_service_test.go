@@ -42,7 +42,8 @@ func TestGmailService_CachingE2E(t *testing.T) {
 	// For service tests, create a context with the userID manually (since session.SetSession is for HTTP)
 	tok := mockToken()
 	testCtx := session.ContextWithUserID(ctx, userID)
-	testCtx = context.WithValue(testCtx, "_test_debug", debug)
+	type testCtxKey string
+	testCtx = context.WithValue(testCtx, testCtxKey("_test_debug"), debug)
 
 	msgID := "gmail_msg_123"
 	msg := &models.EmailMessage{
@@ -92,10 +93,7 @@ func TestGmailService_CachingE2E(t *testing.T) {
 	// if content2.Body != "Cached Body" {
 	// 	t.Errorf("expected cached body, got %s", content2.Body)
 	// }
-
 }
-
-
 
 // --- UNIT TESTS for extractPlainTextBody and getHeader ---
 
@@ -204,8 +202,8 @@ func TestGmailService_FetchMessages_Pagination(t *testing.T) {
 	last := msgs[len(msgs)-1]
 
 	// Fetch second page using cursor
-	ctx2 := context.WithValue(testCtx, "after_id", last.EmailMessageID)
-	ctx2 = context.WithValue(ctx2, "after_internal_date", last.InternalDate)
+	ctx2 := context.WithValue(testCtx, CtxKeyAfterID{}, last.EmailMessageID)
+	ctx2 = context.WithValue(ctx2, CtxKeyAfterInternalDate{}, last.InternalDate)
 	msgs2, err := svc.FetchMessages(ctx2, tok)
 	if err != nil {
 		t.Fatalf("FetchMessages page 2 failed: %v", err)
@@ -219,8 +217,8 @@ func TestGmailService_FetchMessages_Pagination(t *testing.T) {
 
 	// Fetch after last message (should get 0)
 	last2 := msgs2[len(msgs2)-1]
-	ctx3 := context.WithValue(testCtx, "after_id", last2.EmailMessageID)
-	ctx3 = context.WithValue(ctx3, "after_internal_date", last2.InternalDate)
+	ctx3 := context.WithValue(testCtx, CtxKeyAfterID{}, last2.EmailMessageID)
+	ctx3 = context.WithValue(ctx3, CtxKeyAfterInternalDate{}, last2.InternalDate)
 	msgs3, err := svc.FetchMessages(ctx3, tok)
 	if err != nil {
 		t.Fatalf("FetchMessages page 3 failed: %v", err)

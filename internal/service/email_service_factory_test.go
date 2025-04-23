@@ -34,7 +34,7 @@ func TestMultiProviderEmailService_FetchMessages_DeduplicationAndSorting(t *test
 	factory.LinkProvider("user", service.ProviderConfig{UserID: "user", Type: service.ProviderGmail})
 	factory.LinkProvider("user", service.ProviderConfig{UserID: "user", Type: service.ProviderOutlook})
 	svc := service.NewMultiProviderEmailService(factory)
-	ctx := context.WithValue(context.Background(), "user_id", "user")
+	ctx := context.WithValue(context.Background(), service.CtxKeyUserID{}, "user")
 	msgs, err := svc.FetchMessages(ctx, nil)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)

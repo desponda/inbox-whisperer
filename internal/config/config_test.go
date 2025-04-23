@@ -18,7 +18,9 @@ func TestLoadConfig_MalformedJSON(t *testing.T) {
 		t.Fatalf("failed to create temp file: %v", err)
 	}
 	defer os.Remove(f.Name())
-	f.WriteString("{not valid json}")
+	if _, err := f.WriteString("{not valid json}"); err != nil {
+		t.Fatalf("failed to write invalid json: %v", err)
+	}
 	f.Close()
 
 	_, err = LoadConfig(f.Name())
@@ -34,7 +36,9 @@ func TestLoadConfig_ValidConfig(t *testing.T) {
 		t.Fatalf("failed to create temp file: %v", err)
 	}
 	defer os.Remove(f.Name())
-	f.WriteString(cfgText)
+	if _, err := f.WriteString(cfgText); err != nil {
+		t.Fatalf("failed to write config text: %v", err)
+	}
 	f.Close()
 
 	cfg, err := LoadConfig(f.Name())

@@ -13,15 +13,6 @@ import (
 	"github.com/desponda/inbox-whisperer/internal/session"
 )
 
-type mockOAuthConfig struct{}
-
-func (m *mockOAuthConfig) Exchange(ctx context.Context, code string) (*oauth2.Token, error) {
-	if code == "good" {
-		return &oauth2.Token{AccessToken: "tok"}, nil
-	}
-	return nil, context.DeadlineExceeded
-}
-
 // Skipping TestExchangeCodeForToken as it requires refactor for dependency injection.
 // The main logic is covered in fetchGoogleUserID below.
 
@@ -140,11 +131,15 @@ func TestHandleCallback(t *testing.T) {
 				mux := http.NewServeMux()
 				mux.HandleFunc("/setstate", func(w http.ResponseWriter, r *http.Request) {
 					session.SetSession(w, r, "testuser", "testtoken")
-					w.Write([]byte("ok"))
+					if _, err := w.Write([]byte("ok")); err != nil {
+	t.Fatalf("failed to write response: %v", err)
+}
 				})
 				mux.HandleFunc("/setstatevalue", func(w http.ResponseWriter, r *http.Request) {
 					session.SetSessionValue(w, r, "oauth_state", "valid")
-					w.Write([]byte("ok"))
+					if _, err := w.Write([]byte("ok")); err != nil {
+	t.Fatalf("failed to write response: %v", err)
+}
 				})
 				mux.HandleFunc("/api/auth/callback", func(w http.ResponseWriter, r *http.Request) {
 					h.HandleCallback(w, r)
@@ -212,7 +207,9 @@ func TestFetchGoogleUserID(t *testing.T) {
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if strings.Contains(r.URL.Path, "userinfo") {
 			w.Header().Set("Content-Type", "application/json")
-			w.Write([]byte(`{"id": "abc123", "email": "foo@bar.com"}`))
+			if _, err := w.Write([]byte(`{"id": "abc123", "email": "foo@bar.com"}`)); err != nil {
+	t.Fatalf("failed to write response: %v", err)
+}
 			return
 		}
 		w.WriteHeader(404)

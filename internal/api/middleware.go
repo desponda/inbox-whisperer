@@ -8,9 +8,11 @@ import (
 )
 
 // Context keys for userID and token
+type contextKey string
+
 const (
-	ContextUserIDKey = "userID"
-	ContextTokenKey  = "userToken"
+	ContextUserIDKey contextKey = "userID"
+	ContextTokenKey  contextKey = "userToken"
 )
 
 // AuthMiddleware ensures the user is authenticated and attaches userID to context
@@ -18,6 +20,7 @@ func AuthMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		userID := session.GetUserID(r.Context())
 		if userID == "" {
+			// No user session, return 401
 			
 			http.Error(w, "not authenticated: no user session", http.StatusUnauthorized)
 			return
@@ -39,10 +42,8 @@ func TokenMiddleware(userTokens data.UserTokenRepository) func(http.Handler) htt
 				return
 			}
 			
-			tok, err := userTokens.GetUserToken(r.Context(), userID)
-			if err != nil {
-				
-			}
+			tok, _ := userTokens.GetUserToken(r.Context(), userID)
+			
 			if tok == nil {
 				
 				http.Error(w, "not authenticated: no token found for user", http.StatusUnauthorized)

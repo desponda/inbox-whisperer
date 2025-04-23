@@ -19,13 +19,13 @@ type EmailHandler struct {
 	UserTokens data.UserTokenRepository
 }
 
+
 func NewEmailHandler(svc service.EmailService, userTokens data.UserTokenRepository) *EmailHandler {
 	return &EmailHandler{Service: svc, UserTokens: userTokens}
 }
 
 func (h *EmailHandler) FetchMessagesHandler(w http.ResponseWriter, r *http.Request) {
 	tokVal := r.Context().Value(ContextTokenKey)
-	
 	tok, ok := tokVal.(*oauth2.Token)
 	if !ok || tok == nil {
 		http.Error(w, "not authenticated: no token in context", http.StatusUnauthorized)
@@ -34,7 +34,6 @@ func (h *EmailHandler) FetchMessagesHandler(w http.ResponseWriter, r *http.Reque
 	ctx := h.extractPagination(r)
 	msgs, err := h.Service.FetchMessages(ctx, tok)
 	if err != nil {
-		
 		if errors.Is(err, gmail.ErrNotFound) {
 			http.Error(w, err.Error(), http.StatusNotFound)
 			return
@@ -43,7 +42,10 @@ func (h *EmailHandler) FetchMessagesHandler(w http.ResponseWriter, r *http.Reque
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(msgs)
+	if err := json.NewEncoder(w).Encode(msgs); err != nil {
+		http.Error(w, "failed to encode response", http.StatusInternalServerError)
+		return
+	}
 }
 
 func (h *EmailHandler) GetMessageContentHandler(w http.ResponseWriter, r *http.Request) {
@@ -53,7 +55,6 @@ func (h *EmailHandler) GetMessageContentHandler(w http.ResponseWriter, r *http.R
 		return
 	}
 	tokVal := r.Context().Value(ContextTokenKey)
-	
 	tok, ok := tokVal.(*oauth2.Token)
 	if !ok || tok == nil {
 		http.Error(w, "not authenticated: no token in context", http.StatusUnauthorized)
@@ -61,7 +62,6 @@ func (h *EmailHandler) GetMessageContentHandler(w http.ResponseWriter, r *http.R
 	}
 	msg, err := h.Service.FetchMessageContent(r.Context(), tok, id)
 	if err != nil {
-		
 		if err.Error() == "not found" {
 			http.Error(w, "email not found", http.StatusNotFound)
 			return
@@ -70,8 +70,19 @@ func (h *EmailHandler) GetMessageContentHandler(w http.ResponseWriter, r *http.R
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(msg)
+	if err := json.NewEncoder(w).Encode(msg); err != nil {
+		http.Error(w, "failed to encode response", http.StatusInternalServerError)
+		return
+	}
 }
+
+
+type paginationKey struct{}
+
+var (
+	paginationKeyAfterID   = paginationKey{}
+	paginationKeyAfterDate = paginationKey{}
+)
 
 func (h *EmailHandler) extractPagination(r *http.Request) context.Context {
 	ctx := r.Context()
@@ -83,10 +94,8 @@ func (h *EmailHandler) extractPagination(r *http.Request) context.Context {
 			afterInternalDate = parsed
 		}
 	}
-	if afterID != "" && afterInternalDate > 0 {
-		ctx = context.WithValue(ctx, "after_id", afterID)
-		ctx = context.WithValue(ctx, "after_internal_date", afterInternalDate)
-	}
+	ctx = context.WithValue(ctx, paginationKeyAfterID, afterID)
+	ctx = context.WithValue(ctx, paginationKeyAfterDate, afterInternalDate)
 	return ctx
 }
 

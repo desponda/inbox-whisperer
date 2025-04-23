@@ -16,12 +16,16 @@ func TestSessionMiddlewareAndSetSession(t *testing.T) {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/set", func(w http.ResponseWriter, r *http.Request) {
 		SetSession(w, r, "user123", "tokenABC")
-		w.Write([]byte("ok"))
+		if _, err := w.Write([]byte("ok")); err != nil {
+			t.Fatalf("failed to write response: %v", err)
+		}
 	})
 	mux.HandleFunc("/get", func(w http.ResponseWriter, r *http.Request) {
 		uid := GetUserID(r.Context())
 		tok := GetToken(r.Context())
-		w.Write([]byte(uid + ":" + tok))
+		if _, err := w.Write([]byte(uid + ":" + tok)); err != nil {
+		t.Fatalf("failed to write response: %v", err)
+	}
 	})
 
 	ts := httptest.NewServer(Middleware(mux))
@@ -66,31 +70,28 @@ func TestSessionMiddlewareAndSetSession(t *testing.T) {
 	mux.HandleFunc("/setval", func(w http.ResponseWriter, r *http.Request) {
 		SetSessionValue(w, r, "foo", "bar")
 		SetSessionValue(w, r, "baz", "qux")
-		w.Write([]byte("ok"))
+		if _, err := w.Write([]byte("ok")); err != nil {
+			t.Fatalf("failed to write response: %v", err)
+		}
 	})
 	mux.HandleFunc("/getval", func(w http.ResponseWriter, r *http.Request) {
 		foo := GetSessionValue(r, "foo")
 		baz := GetSessionValue(r, "baz")
-		w.Write([]byte(foo + ":" + baz))
+		if _, err := w.Write([]byte(foo + ":" + baz)); err != nil {
+		t.Fatalf("failed to write response: %v", err)
+	}
 	})
-
-	resp3 = nil
-	err = nil
 	resp3, err = client.Get(ts.URL + "/setval")
 	if err != nil {
 		t.Fatalf("setval failed: %v", err)
 	}
 	defer resp3.Body.Close()
-
-	resp4 = nil
-	err = nil
 	resp4, err = client.Get(ts.URL + "/getval")
 	if err != nil {
 		t.Fatalf("getval failed: %v", err)
 	}
 	defer resp4.Body.Close()
-	body2 = nil
-	err = nil
+	defer resp3.Body.Close()
 	body2, err = io.ReadAll(resp4.Body)
 	if err != nil {
 		t.Fatalf("failed to read response body: %v", err)
@@ -101,23 +102,16 @@ func TestSessionMiddlewareAndSetSession(t *testing.T) {
 	}
 
 	// Overwrite session
-	resp3 = nil
-	err = nil
 	resp3, err = client.Get(ts.URL + "/set")
 	if err != nil {
 		t.Fatalf("set failed: %v", err)
 	}
 	defer resp3.Body.Close()
-
-	resp4 = nil
-	err = nil
 	resp4, err = client.Get(ts.URL + "/get")
 	if err != nil {
 		t.Fatalf("get failed: %v", err)
 	}
 	defer resp4.Body.Close()
-	body2 = nil
-	err = nil
 	body2, err = io.ReadAll(resp4.Body)
 	if err != nil {
 		t.Fatalf("failed to read response body: %v", err)
