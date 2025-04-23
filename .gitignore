@@ -160,3 +160,4 @@ schema.sql
 .DS_Store
 Thumbs.db
 .windsurfrules
+coverage.out
