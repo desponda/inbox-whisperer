@@ -17,7 +17,9 @@
   - Tables and indexes use `IF NOT EXISTS`
   - Seed data uses `ON CONFLICT DO NOTHING`
 - **CI/CD and production:**
-  - Use the `docker-migrate-up`/`down` targets if needed (ensure migrations are visible to Docker)
+  - Use your pipeline's preferred method to apply migrations. The `docker-migrate-up`/`down` targets have been removed for reliability.
+- **Tip:** Use `make help` to view all available Makefile targets.
+- **Note:** `migrate.tar.gz` is no longer tracked in git or required for migrations.
 
 ## Checklist (updated)
 - [x] Modular, extensible PostgreSQL schema defined in migration files

@@ -28,8 +28,14 @@ Inbox Whisperer is an AI-powered tool to help users achieve and maintain inbox z
 ### Backend
 1. Install Go (>=1.22)
 2. Copy `.env.example` to `.env` and fill in credentials
-3. Run migrations: `make migrate-up`
+3. Run migrations: `make dev-up` or `make psql-migrate-up` (see Makefile and migrations/README.md)
 4. Start backend: `make run`
+
+- To create a new migration: `make migrate-create`
+- To clean up test output: `make clean`
+- To discover all Makefile targets: `make help`
+
+Note: `migrate.tar.gz` and `test-output.txt` are now ignored and removed from git/history.
 
 ### Frontend (React UI)
 1. Scaffold the project in `ui/` (see `features/mvp-ui-react.md` for plan)

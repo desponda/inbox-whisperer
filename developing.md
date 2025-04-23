@@ -67,5 +67,8 @@ Inbox Whisperer is a suite of AI-powered tools designed to help users achieve an
 
 ## Development Notes
 
+- The Makefile has been improved: new `clean` and `help` targets, docker-migrate-up/down removed, and DB migration workflow clarified (see Makefile and README).
+- Large/test output files are now ignored and removed from git (see .gitignore).
+- Use `make help` to discover all Makefile targets.
 - This document is maintained by the Windsurf context tracker.
 - Please update with any new insights, workflow changes, or category refinements as development progresses.

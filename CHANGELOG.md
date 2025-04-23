@@ -1,5 +1,12 @@
 # Changelog
 
+## [2025-04-23]
+### Changed
+- Removed `migrate.tar.gz` and `test-output.txt` from git and git history.
+- Improved Makefile: added `help` and `clean` targets, clarified DB migration workflow, removed `docker-migrate-up`/`down` targets for reliability.
+- Updated documentation in all major markdown files to reflect new Makefile usage and DB workflow.
+- Added notes about ignoring and removing large/test output files from version control.
+
 ## [2025-04-22]
 ### Added
 - Google OAuth2 login and user creation flow.

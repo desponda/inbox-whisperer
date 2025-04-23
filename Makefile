@@ -1,4 +1,25 @@
 # Makefile for Inbox Whisperer
+#
+# Usage:
+#   make <target>
+#
+# Key targets:
+#   ui-install          Install frontend dependencies
+#   ui-dev              Start React dev server
+#   ui-build            Build React app for production
+#   ui-lint             Lint frontend code
+#   ui-test             Run frontend tests
+#   ui-coverage         Generate frontend coverage report
+#   ui-generate-api-client  Generate TypeScript API client from OpenAPI spec
+#   lint                Lint backend Go code
+#   test                Run backend Go tests
+#   dev-up              Start DB and apply migrations (local/dev)
+#   migrate-create      Create a new DB migration
+#   tidy                Run go mod tidy
+#   clean               Remove temp/test output files
+#   help                Show this help message
+#
+# For more info, see README.md and migrations/README.md
 
 # ==== Frontend (React UI) ====
 .PHONY: ui-install ui-dev ui-build ui-lint ui-test ui-coverage ui-generate-api-client
@@ -25,10 +46,20 @@ ui-generate-api-client:
 	cd ui && npm run generate:api || echo 'API client generation script not found.'
 
 # Unified lint/test
-.PHONY: lint-all test-all
+.PHONY: lint-all test-all help clean
 lint-all: lint ui-lint
 
 test-all: test ui-test
+
+help:
+	@echo "Available targets:"
+	@grep -E '^[a-zA-Z0-9_-]+:|^# ' Makefile | \
+	  sed -E 's/^([a-zA-Z0-9_-]+):.*/\1/;s/^# //' | \
+	  awk 'BEGIN{t=""} /^[a-zA-Z0-9_-]+$/ {if(t!=""){print t}; t=$0; next} {t=t" "$0} END{print t}' | \
+	  column -t -s ':'
+
+clean:
+	rm -f test-output.txt
 
 .PHONY: db-up db-init
 
@@ -91,8 +122,7 @@ test-db-integration:
 	go test -tags=integration ./internal/data/
 
 
-# CI/CD/Production only: Apply/rollback migrations using golang-migrate Docker image
-# WARNING: These targets will NOT work from inside a devcontainer unless the host's migrations folder is visible to Docker.
-# The docker-migrate-up and docker-migrate-down targets have been removed
-# because Docker volume mounting is unreliable in some environments (e.g., devcontainers, cloud IDEs).
-# Use the psql-migrate-up target for local/dev and containerized setups.
+# DB Migration Notes:
+# - For local/dev, use: make dev-up or make psql-migrate-up
+# - For CI/CD, ensure migrations are present and use your pipeline's preferred method.
+# - docker-migrate-up/down targets have been removed for reliability. See migrations/README.md for details.

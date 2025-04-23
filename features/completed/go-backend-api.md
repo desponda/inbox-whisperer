@@ -1,5 +1,7 @@
 # Go Backend API & Service Layer
 
+**Note: The Makefile and DB workflow have been updated. See README and Makefile for new targets. docker-migrate-up/down have been removed. Use `make help` to discover all targets. Large/test output files are now ignored and removed from git.**
+
 This feature tracks the next phase of backend development for Inbox Whisperer, following the principles in `developing.md`:
 - Always working, tested code
 - Separation of concerns (API, service, data)
@@ -48,6 +50,8 @@ This feature tracks the next phase of backend development for Inbox Whisperer, f
 **Status as of 2025-04-21:**
 - All API, service, and data layer tests pass, including those using testcontainers and repository logic.
 - Test infrastructure is robust and isolated; backend is ready for new features.
+- The Makefile and DB workflow have been updated—see Makefile and README for new targets (docker-migrate-up/down removed, use make help).
+- Large/test output files are now ignored and removed from git.
 - See README for troubleshooting testcontainers in devcontainers.
 
 ---
