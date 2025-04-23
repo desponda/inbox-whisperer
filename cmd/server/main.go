@@ -83,17 +83,21 @@ func setupRouter(db *data.DB, cfg *config.AppConfig) http.Handler {
 	api.RegisterAuthRoutes(r, cfg, db)
 	// Only register Gmail API endpoints if db is not nil (prevents nil pointer dereference in tests)
 	if db != nil {
-		api.RegisterEmailRoutes(r, db, db)
+		// Apply Auth and Token middleware to email API
+		r.With(api.AuthMiddleware, api.TokenMiddleware(db)).Route("/api/email", func(r chi.Router) {
+			r.Get("/messages", api.NewEmailHandler(service.NewMultiProviderEmailService(service.NewEmailProviderFactory()), db).FetchMessagesHandler)
+			r.Get("/messages/{id}", api.NewEmailHandler(service.NewMultiProviderEmailService(service.NewEmailProviderFactory()), db).GetMessageContentHandler)
+		})
 	}
 
 	h := api.NewUserHandler(service.NewUserService(db))
 	r.Route("/users", func(r chi.Router) {
 		r.Get("/", h.ListUsers)
 		r.Post("/", h.CreateUser)
-		// Only allow users to access/modify their own info
-		r.With(api.RequireSameUser).Get("/{id}", h.GetUser)
-		r.With(api.RequireSameUser).Put("/{id}", h.UpdateUser)
-		r.With(api.RequireSameUser).Delete("/{id}", h.DeleteUser)
+		// Only allow users to access/modify their own info (now via AuthMiddleware)
+		r.With(api.AuthMiddleware).Get("/{id}", h.GetUser)
+		r.With(api.AuthMiddleware).Put("/{id}", h.UpdateUser)
+		r.With(api.AuthMiddleware).Delete("/{id}", h.DeleteUser)
 	})
 
 	r.Get("/healthz", func(w http.ResponseWriter, r *http.Request) {

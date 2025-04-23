@@ -26,11 +26,7 @@ func (h *UserHandler) UpdateUser(w http.ResponseWriter, r *http.Request) {
 		RespondError(w, http.StatusBadRequest, err.Error())
 		return
 	}
-	userID, err := ValidateAuth(r)
-	if err != nil {
-		RespondError(w, http.StatusUnauthorized, err.Error())
-		return
-	}
+	userID := r.Context().Value(ContextUserIDKey).(string)
 	if id != userID {
 		RespondError(w, http.StatusForbidden, "forbidden")
 		return
@@ -54,11 +50,7 @@ func (h *UserHandler) DeleteUser(w http.ResponseWriter, r *http.Request) {
 		RespondError(w, http.StatusBadRequest, err.Error())
 		return
 	}
-	userID, err := ValidateAuth(r)
-	if err != nil {
-		RespondError(w, http.StatusUnauthorized, err.Error())
-		return
-	}
+	userID := r.Context().Value(ContextUserIDKey).(string)
 	if id != userID {
 		RespondError(w, http.StatusForbidden, "forbidden")
 		return
@@ -96,11 +88,7 @@ func (h *UserHandler) GetUser(w http.ResponseWriter, r *http.Request) {
 		RespondError(w, http.StatusBadRequest, err.Error())
 		return
 	}
-	userID, err := ValidateAuth(r)
-	if err != nil {
-		RespondError(w, http.StatusUnauthorized, err.Error())
-		return
-	}
+	userID := r.Context().Value(ContextUserIDKey).(string)
 	if id != userID {
 		RespondError(w, http.StatusForbidden, "forbidden")
 		return

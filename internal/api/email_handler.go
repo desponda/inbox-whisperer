@@ -11,6 +11,7 @@ import (
 	"github.com/desponda/inbox-whisperer/internal/data"
 	"github.com/desponda/inbox-whisperer/internal/service"
 	gmail "github.com/desponda/inbox-whisperer/internal/service/gmail"
+	"golang.org/x/oauth2"
 )
 
 type EmailHandler struct {
@@ -23,16 +24,7 @@ func NewEmailHandler(svc service.EmailService, userTokens data.UserTokenReposito
 }
 
 func (h *EmailHandler) FetchMessagesHandler(w http.ResponseWriter, r *http.Request) {
-	userID, err := ValidateAuth(r)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusUnauthorized)
-		return
-	}
-	tok, err := h.UserTokens.GetUserToken(r.Context(), userID)
-	if err != nil || tok == nil {
-		http.Error(w, "not authenticated: no token found for user", http.StatusUnauthorized)
-		return
-	}
+	tok := r.Context().Value(ContextTokenKey).(*oauth2.Token)
 	ctx := h.extractPagination(r)
 	msgs, err := h.Service.FetchMessages(ctx, tok)
 	if err != nil {
@@ -53,16 +45,7 @@ func (h *EmailHandler) GetMessageContentHandler(w http.ResponseWriter, r *http.R
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	userID, err := ValidateAuth(r)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusUnauthorized)
-		return
-	}
-	tok, err := h.UserTokens.GetUserToken(r.Context(), userID)
-	if err != nil || tok == nil {
-		http.Error(w, "not authenticated: no token found for user", http.StatusUnauthorized)
-		return
-	}
+	tok := r.Context().Value(ContextTokenKey).(*oauth2.Token)
 	msg, err := h.Service.FetchMessageContent(r.Context(), tok, id)
 	if err != nil {
 		if err.Error() == "not found" {
