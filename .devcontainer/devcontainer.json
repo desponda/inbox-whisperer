@@ -5,11 +5,7 @@
   "mounts": [
     "source=/var/run/docker.sock,target=/var/run/docker.sock,type=bind"
   ],
-  "env": {
-    "TESTCONTAINERS_RYUK_DISABLED": "true",
-    "TESTCONTAINERS_CHECKS_DISABLE": "true",
-    "TESTCONTAINERS_DEBUG": "true"
-  },
+
   "customizations": {
     "vscode": {
       "settings": {
@@ -17,7 +13,7 @@
         "go.useLanguageServer": true,
         "go.gopath": "/go",
         "go.goroot": "/usr/local/go",
-        "typescript.tsdk": "frontend/node_modules/typescript/lib",
+        "typescript.tsdk": "web/node_modules/typescript/lib",
         "editor.formatOnSave": true,
         "editor.codeActionsOnSave": {
           "source.fixAll.eslint": true
@@ -28,7 +24,17 @@
         "ms-azuretools.vscode-docker",
         "GitHub.copilot",
         "dbaeumer.vscode-eslint",
-        "esbenp.prettier-vscode"
+        "esbenp.prettier-vscode",
+        "ms-vscode.vscode-typescript-next",
+        "eamodio.gitlens",
+        "mhutchie.git-graph",
+        "streetsidesoftware.code-spell-checker",
+        "bradlc.vscode-tailwindcss",
+        "orta.vscode-jest",
+        "Prisma.prisma",
+        "redhat.vscode-yaml",
+        "EditorConfig.EditorConfig",
+        "ms-vsliveshare.vsliveshare"
       ]
     }
   },
