@@ -2,12 +2,12 @@ package api
 
 import (
 	"context"
+	"golang.org/x/oauth2"
+	"io"
 	"net/http"
 	"net/http/httptest"
-	"testing"
 	"strings"
-	"io"
-	"golang.org/x/oauth2"
+	"testing"
 
 	"github.com/desponda/inbox-whisperer/internal/data"
 	"github.com/desponda/inbox-whisperer/internal/session"
@@ -47,17 +47,22 @@ func TestHandleLogin(t *testing.T) {
 // Implements data.UserTokenRepository
 // (GetUserToken returns a dummy token)
 type stubFailUserTokens struct{}
-func (s *stubFailUserTokens) SaveUserToken(ctx context.Context, userID string, tok *oauth2.Token) error { return context.DeadlineExceeded }
-func (s *stubFailUserTokens) GetUserToken(ctx context.Context, userID string) (*oauth2.Token, error) { return &oauth2.Token{AccessToken: "tok"}, nil }
+
+func (s *stubFailUserTokens) SaveUserToken(ctx context.Context, userID string, tok *oauth2.Token) error {
+	return context.DeadlineExceeded
+}
+func (s *stubFailUserTokens) GetUserToken(ctx context.Context, userID string) (*oauth2.Token, error) {
+	return &oauth2.Token{AccessToken: "tok"}, nil
+}
 
 func TestHandleCallback(t *testing.T) {
 
 	tests := []struct {
-		name        string
-		query       string
-		failSave    bool
-		wantStatus  int
-		wantInBody  string
+		name       string
+		query      string
+		failSave   bool
+		wantStatus int
+		wantInBody string
 	}{
 		{
 			name:       "missing code",
@@ -132,14 +137,14 @@ func TestHandleCallback(t *testing.T) {
 				mux.HandleFunc("/setstate", func(w http.ResponseWriter, r *http.Request) {
 					session.SetSession(w, r, "testuser", "testtoken")
 					if _, err := w.Write([]byte("ok")); err != nil {
-	t.Fatalf("failed to write response: %v", err)
-}
+						t.Fatalf("failed to write response: %v", err)
+					}
 				})
 				mux.HandleFunc("/setstatevalue", func(w http.ResponseWriter, r *http.Request) {
 					session.SetSessionValue(w, r, "oauth_state", "valid")
 					if _, err := w.Write([]byte("ok")); err != nil {
-	t.Fatalf("failed to write response: %v", err)
-}
+						t.Fatalf("failed to write response: %v", err)
+					}
 				})
 				mux.HandleFunc("/api/auth/callback", func(w http.ResponseWriter, r *http.Request) {
 					h.HandleCallback(w, r)
@@ -193,14 +198,11 @@ func TestHandleCallback(t *testing.T) {
 	}
 }
 
-
 // SessionData mirrors the struct in session/session.go for test setup
 // Only Values is needed for CSRF state
 type SessionData struct {
 	Values map[string]string
 }
-
-
 
 func TestFetchGoogleUserID(t *testing.T) {
 	// Mock HTTP server for userinfo
@@ -208,8 +210,8 @@ func TestFetchGoogleUserID(t *testing.T) {
 		if strings.Contains(r.URL.Path, "userinfo") {
 			w.Header().Set("Content-Type", "application/json")
 			if _, err := w.Write([]byte(`{"id": "abc123", "email": "foo@bar.com"}`)); err != nil {
-	t.Fatalf("failed to write response: %v", err)
-}
+				t.Fatalf("failed to write response: %v", err)
+			}
 			return
 		}
 		w.WriteHeader(404)

@@ -6,8 +6,8 @@ import (
 )
 
 type MockUserTokenRepository struct {
-	GetUserTokenFunc    func(ctx context.Context, userID string) (*oauth2.Token, error)
-	SaveUserTokenFunc   func(ctx context.Context, userID string, token *oauth2.Token) error
+	GetUserTokenFunc  func(ctx context.Context, userID string) (*oauth2.Token, error)
+	SaveUserTokenFunc func(ctx context.Context, userID string, token *oauth2.Token) error
 }
 
 func (m *MockUserTokenRepository) GetUserToken(ctx context.Context, userID string) (*oauth2.Token, error) {

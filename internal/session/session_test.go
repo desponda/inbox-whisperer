@@ -24,8 +24,8 @@ func TestSessionMiddlewareAndSetSession(t *testing.T) {
 		uid := GetUserID(r.Context())
 		tok := GetToken(r.Context())
 		if _, err := w.Write([]byte(uid + ":" + tok)); err != nil {
-		t.Fatalf("failed to write response: %v", err)
-	}
+			t.Fatalf("failed to write response: %v", err)
+		}
 	})
 
 	ts := httptest.NewServer(Middleware(mux))
@@ -78,8 +78,8 @@ func TestSessionMiddlewareAndSetSession(t *testing.T) {
 		foo := GetSessionValue(r, "foo")
 		baz := GetSessionValue(r, "baz")
 		if _, err := w.Write([]byte(foo + ":" + baz)); err != nil {
-		t.Fatalf("failed to write response: %v", err)
-	}
+			t.Fatalf("failed to write response: %v", err)
+		}
 	})
 	resp3, err = client.Get(ts.URL + "/setval")
 	if err != nil {

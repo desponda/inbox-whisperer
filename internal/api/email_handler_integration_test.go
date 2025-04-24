@@ -59,19 +59,19 @@ func (m *mockNoTokenUserTokenRepository) SaveUserToken(ctx context.Context, user
 
 func TestEmailAPI_Integration_Success(t *testing.T) {
 	userTokens := &mocks.MockUserTokenRepository{
-	GetUserTokenFunc: func(ctx context.Context, userID string) (*oauth2.Token, error) {
-		if userID == "user1" {
-			return &oauth2.Token{AccessToken: "mock-token"}, nil
-		}
-		return nil, nil
-	},
-}
-emailSvc := &mocks.MockEmailService{
-	FetchMessagesFunc: func(ctx context.Context, token *oauth2.Token) ([]models.EmailMessage, error) {
-		return []models.EmailMessage{{ID: 123, Subject: "Test"}}, nil
-	},
-}
-r := setupTestRouterWithEmail(userTokens, emailSvc)
+		GetUserTokenFunc: func(ctx context.Context, userID string) (*oauth2.Token, error) {
+			if userID == "user1" {
+				return &oauth2.Token{AccessToken: "mock-token"}, nil
+			}
+			return nil, nil
+		},
+	}
+	emailSvc := &mocks.MockEmailService{
+		FetchMessagesFunc: func(ctx context.Context, token *oauth2.Token) ([]models.EmailMessage, error) {
+			return []models.EmailMessage{{ID: 123, Subject: "Test"}}, nil
+		},
+	}
+	r := setupTestRouterWithEmail(userTokens, emailSvc)
 	w := httptest.NewRecorder()
 
 	// Simulate a valid session using the session package helper

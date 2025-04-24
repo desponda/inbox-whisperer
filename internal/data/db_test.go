@@ -2,9 +2,9 @@ package data
 
 import (
 	"context"
+	"os"
 	"testing"
 	"time"
-	"os"
 )
 
 func TestDB_New_and_Close(t *testing.T) {

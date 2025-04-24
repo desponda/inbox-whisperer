@@ -2,10 +2,10 @@ package service
 
 import (
 	"context"
-	"testing"
 	"errors"
-	"github.com/desponda/inbox-whisperer/internal/models"
 	"github.com/desponda/inbox-whisperer/internal/data"
+	"github.com/desponda/inbox-whisperer/internal/models"
+	"testing"
 )
 
 type mockUserRepo struct {
@@ -46,11 +46,11 @@ func (m *mockUserRepo) Create(ctx context.Context, user *models.User) error {
 
 func TestUserService_GetUser(t *testing.T) {
 	tests := []struct {
-		name      string
-		id        string
-		repoFunc  func(ctx context.Context, id string) (*models.User, error)
-		wantUser  *models.User
-		wantErr   bool
+		name     string
+		id       string
+		repoFunc func(ctx context.Context, id string) (*models.User, error)
+		wantUser *models.User
+		wantErr  bool
 	}{
 		{
 			name: "success",

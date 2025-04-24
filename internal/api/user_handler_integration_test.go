@@ -116,5 +116,5 @@ func TestUserHandler_CreateAndGetUser_Integration(t *testing.T) {
 		t.Fatalf("POST /users/ got status %d, want %d", w.Code, http.StatusForbidden)
 	}
 	t.Logf("POST /users/ response: %d %s", w.Code, w.Body.String())
-// No further actions: direct user creation is forbidden, so no user should exist or be manipulated in this test.
+	// No further actions: direct user creation is forbidden, so no user should exist or be manipulated in this test.
 }

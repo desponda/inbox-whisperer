@@ -1,8 +1,8 @@
 package config
 
 import (
-	"os"
 	"github.com/rs/zerolog/log"
+	"os"
 )
 
 // Config holds all configuration for the server

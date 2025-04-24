@@ -23,7 +23,7 @@ var store = struct {
 
 type SessionData struct {
 	UserID string
-	Token  string // Store access token for demo; in prod, store full oauth2.Token
+	Token  string            // Store access token for demo; in prod, store full oauth2.Token
 	Values map[string]string // Arbitrary key-value pairs (e.g., oauth_state)
 }
 

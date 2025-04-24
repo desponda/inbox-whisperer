@@ -16,12 +16,36 @@ import (
 import "google.golang.org/api/gmail/v1"
 
 type mockGmailAPI struct {
-	msg   *gmail.Message
-	err   error
+	msg      *gmail.Message
+	err      error
+	listResp *gmail.ListMessagesResponse
+	listErr  error
+	msgMap   map[string]*gmail.Message
+	getErr   error
 }
 
-func (m *mockGmailAPI) UsersMessagesGet(userID, msgID string) interface{ Do(context.Context) (*gmail.Message, error) } {
+func (m *mockGmailAPI) UsersMessagesGet(userID, msgID string) interface {
+	Do(context.Context) (*gmail.Message, error)
+} {
+	if m.msgMap != nil {
+		return &mockUsersMessagesGetCall{msg: m.msgMap[msgID], err: m.getErr}
+	}
 	return &mockUsersMessagesGetCall{msg: m.msg, err: m.err}
+}
+
+func (m *mockGmailAPI) UsersMessagesList(userID string) interface {
+	Do() (*gmail.ListMessagesResponse, error)
+} {
+	return &mockUsersMessagesListCall{resp: m.listResp, err: m.listErr}
+}
+
+type mockUsersMessagesListCall struct {
+	resp *gmail.ListMessagesResponse
+	err  error
+}
+
+func (c *mockUsersMessagesListCall) Do() (*gmail.ListMessagesResponse, error) {
+	return c.resp, c.err
 }
 
 type mockUsersMessagesGetCall struct {
@@ -91,14 +115,107 @@ func TestGmailService_FetchMessageContent_ErrorPaths(t *testing.T) {
 	}
 }
 
+func TestGmailService_syncLatestSummariesFromGmail(t *testing.T) {
+	repo := &fakeUpsertRepo{}
+	mockAPI := &mockGmailAPI{
+		listResp: &gmail.ListMessagesResponse{
+			Messages: []*gmail.Message{{Id: "id1"}},
+		},
+		msgMap: map[string]*gmail.Message{
+			"id1": {
+				Id:       "id1",
+				ThreadId: "th1",
+				Snippet:  "snippet1",
+				Payload: &gmail.MessagePart{
+					Headers: []*gmail.MessagePartHeader{
+						{Name: "Subject", Value: "subject1"},
+						{Name: "From", Value: "sender1@example.com"},
+						{Name: "Date", Value: "2025-04-24T00:00:00Z"},
+					},
+				},
+				InternalDate: 123456,
+				HistoryId:    42,
+			},
+		},
+	}
 
-// dummyRepo implements EmailMessageRepository but does nothing (for isolation)
+	svc := NewGmailServiceWithAPI(repo, mockAPI)
+	ctx := context.Background()
+	userID := "user1"
+	tok := &oauth2.Token{AccessToken: "dummy"}
+
+	// Error path: list call fails
+	mockAPI.listErr = errors.New("list error")
+	err := svc.syncLatestSummariesFromGmail(ctx, tok, userID, 10)
+	if err == nil {
+		t.Errorf("expected error from list call, got nil")
+	}
+
+	// Error path: get call fails (should skip errored messages, but not return error)
+	mockAPI.listErr = nil
+	mockAPI.getErr = errors.New("get error")
+	repo.upsertCount = 0
+	err = svc.syncLatestSummariesFromGmail(ctx, tok, userID, 10)
+	if err != nil {
+		t.Errorf("expected no error, got %v", err)
+	}
+	if repo.upsertCount != 0 {
+		t.Errorf("expected no upserts when get fails, got %d", repo.upsertCount)
+	}
+
+	// Success path
+	mockAPI.getErr = nil
+	repo.upsertCount = 0
+	err = svc.syncLatestSummariesFromGmail(ctx, tok, userID, 10)
+	if err != nil {
+		t.Errorf("expected no error, got %v", err)
+	}
+	if repo.upsertCount == 0 {
+		t.Errorf("expected upsert to be called, got 0")
+	}
+}
+
+type fakeUpsertRepo struct {
+	upsertCount int
+}
+
+func (f *fakeUpsertRepo) UpsertMessage(ctx context.Context, msg *models.EmailMessage) error {
+	f.upsertCount++
+	return nil
+}
+func (f *fakeUpsertRepo) GetMessage(ctx context.Context, userID, msgID string) (*models.EmailMessage, error) {
+	return nil, nil
+}
+func (f *fakeUpsertRepo) GetMessageByID(ctx context.Context, userID, msgID string) (*models.EmailMessage, error) {
+	return nil, nil
+}
+func (f *fakeUpsertRepo) ListMessages(ctx context.Context, userID string, pageSize int, afterInternalDate int64, afterID string) ([]*models.EmailMessage, error) {
+	return nil, nil
+}
+func (f *fakeUpsertRepo) GetMessagesForUser(ctx context.Context, userID string, pageSize int, afterInternalDate int) ([]*models.EmailMessage, error) {
+	return nil, nil
+}
+func (f *fakeUpsertRepo) GetMessagesForUserCursor(ctx context.Context, userID string, pageSize int, afterInternalDate int64, afterID string) ([]*models.EmailMessage, error) {
+	return nil, nil
+}
+func (f *fakeUpsertRepo) DeleteMessagesForUser(ctx context.Context, userID string) error { return nil }
+
 type dummyRepo struct{}
 
 func (d *dummyRepo) UpsertMessage(ctx context.Context, msg *models.EmailMessage) error { return nil }
-func (d *dummyRepo) GetMessage(ctx context.Context, userID, msgID string) (*models.EmailMessage, error) { return nil, errors.New("not found") }
-func (d *dummyRepo) GetMessageByID(ctx context.Context, userID, msgID string) (*models.EmailMessage, error) { return nil, errors.New("not found") }
-func (d *dummyRepo) ListMessages(ctx context.Context, userID string, pageSize int, afterInternalDate int64, afterID string) ([]*models.EmailMessage, error) { return nil, nil }
-func (d *dummyRepo) GetMessagesForUser(ctx context.Context, userID string, pageSize int, afterInternalDate int) ([]*models.EmailMessage, error) { return nil, nil }
-func (d *dummyRepo) GetMessagesForUserCursor(ctx context.Context, userID string, pageSize int, afterInternalDate int64, afterID string) ([]*models.EmailMessage, error) { return nil, nil }
+func (d *dummyRepo) GetMessage(ctx context.Context, userID, msgID string) (*models.EmailMessage, error) {
+	return nil, errors.New("not found")
+}
+func (d *dummyRepo) GetMessageByID(ctx context.Context, userID, msgID string) (*models.EmailMessage, error) {
+	return nil, errors.New("not found")
+}
+func (d *dummyRepo) ListMessages(ctx context.Context, userID string, pageSize int, afterInternalDate int64, afterID string) ([]*models.EmailMessage, error) {
+	return nil, nil
+}
+func (d *dummyRepo) GetMessagesForUser(ctx context.Context, userID string, pageSize int, afterInternalDate int) ([]*models.EmailMessage, error) {
+	return nil, nil
+}
+func (d *dummyRepo) GetMessagesForUserCursor(ctx context.Context, userID string, pageSize int, afterInternalDate int64, afterID string) ([]*models.EmailMessage, error) {
+	return nil, nil
+}
 func (d *dummyRepo) DeleteMessagesForUser(ctx context.Context, userID string) error { return nil }

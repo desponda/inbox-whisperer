@@ -2,9 +2,9 @@ package data
 
 import (
 	"context"
+	"github.com/desponda/inbox-whisperer/internal/models"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
-	"github.com/desponda/inbox-whisperer/internal/models"
 )
 
 type EmailMessageRepository interface {
@@ -95,8 +95,8 @@ func (r *emailMessageRepository) GetMessagesForUser(ctx context.Context, userID 
 func (r *emailMessageRepository) GetMessagesForUserCursor(ctx context.Context, userID string, limit int, afterInternalDate int64, afterMsgID string) ([]*models.EmailMessage, error) {
 	var (
 		query string
-		rows pgx.Rows
-		err error
+		rows  pgx.Rows
+		err   error
 	)
 	if afterInternalDate > 0 && afterMsgID != "" {
 		query = `SELECT id, user_id, email_message_id, thread_id, subject, sender, recipient, snippet, body, internal_date, history_id, cached_at, last_fetched_at, category, categorization_confidence, raw_json FROM email_messages WHERE user_id=$1 AND (internal_date, email_message_id) < ($2, $3) ORDER BY internal_date DESC, email_message_id DESC LIMIT $4`

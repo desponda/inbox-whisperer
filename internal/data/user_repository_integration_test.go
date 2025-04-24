@@ -11,22 +11,19 @@ import (
 
 	"github.com/desponda/inbox-whisperer/internal/models"
 	"github.com/google/uuid"
-	"github.com/jackc/pgx/v5/pgxpool"
-	"github.com/testcontainers/testcontainers-go/modules/postgres"
-	"github.com/testcontainers/testcontainers-go/wait"
-	"github.com/testcontainers/testcontainers-go"
 )
 
-
 func TestUserRepository_Integration(t *testing.T) {
+	db, cleanup := SetupTestDB(t)
+	defer cleanup()
+
 	if testing.Short() {
 		t.Skip("skipping integration test in short mode")
 	}
 	if os.Getenv("SKIP_DB_INTEGRATION") == "1" {
 		t.Skip("skipping DB integration test by env")
 	}
-	db, cleanup := setupTestDB(t)
-	defer cleanup()
+
 	ctx := context.Background()
 
 	user := &models.User{

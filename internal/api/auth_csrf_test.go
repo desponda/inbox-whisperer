@@ -1,20 +1,19 @@
 package api
 
 import (
+	"context"
+	"github.com/desponda/inbox-whisperer/internal/session"
+	"golang.org/x/oauth2"
 	"net/http"
 	"net/http/httptest"
 	"testing"
-	"github.com/desponda/inbox-whisperer/internal/session"
-	"golang.org/x/oauth2"
-	"context"
 )
-
 
 func TestHandleCallback_CSRFProtection(t *testing.T) {
 	// Setup AuthHandler with mock UserTokens
 	h := &AuthHandler{
 		OAuthConfig: &oauth2.Config{},
-		UserTokens: &stubUserTokens{},
+		UserTokens:  &stubUserTokens{},
 	}
 	// Patch exchangeCodeForToken to always succeed
 	savedExchange := exchangeCodeForToken
@@ -25,7 +24,6 @@ func TestHandleCallback_CSRFProtection(t *testing.T) {
 		return nil, context.DeadlineExceeded
 	}
 	defer func() { exchangeCodeForToken = savedExchange }()
-
 
 	// Simulate request with missing state
 	r := httptest.NewRequest("GET", "/auth/callback?code=somecode", nil)
@@ -53,14 +51,14 @@ func TestHandleCallback_CSRFProtection(t *testing.T) {
 		// Only create the session
 		session.SetSession(w, r, "testuser", "testtoken")
 		if _, err := w.Write([]byte("ok")); err != nil {
-		t.Fatalf("failed to write response: %v", err)
-	}
+			t.Fatalf("failed to write response: %v", err)
+		}
 	})
-mux.HandleFunc("/setstatevalue", func(w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc("/setstatevalue", func(w http.ResponseWriter, r *http.Request) {
 		session.SetSessionValue(w, r, "oauth_state", "goodstate")
 		if _, err := w.Write([]byte("ok")); err != nil {
-		t.Fatalf("failed to write response: %v", err)
-	}
+			t.Fatalf("failed to write response: %v", err)
+		}
 	})
 	mux.HandleFunc("/auth/callback", func(w http.ResponseWriter, r *http.Request) {
 		h.HandleCallback(w, r)
@@ -97,5 +95,10 @@ mux.HandleFunc("/setstatevalue", func(w http.ResponseWriter, r *http.Request) {
 // stubUserTokens implements only SaveUserToken for test
 // (other methods are no-ops)
 type stubUserTokens struct{}
-func (s *stubUserTokens) SaveUserToken(ctx context.Context, userID string, tok *oauth2.Token) error { return nil }
-func (s *stubUserTokens) GetUserToken(ctx context.Context, userID string) (*oauth2.Token, error) { return &oauth2.Token{AccessToken: "tok"}, nil }
+
+func (s *stubUserTokens) SaveUserToken(ctx context.Context, userID string, tok *oauth2.Token) error {
+	return nil
+}
+func (s *stubUserTokens) GetUserToken(ctx context.Context, userID string) (*oauth2.Token, error) {
+	return &oauth2.Token{AccessToken: "tok"}, nil
+}

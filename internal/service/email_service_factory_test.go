@@ -2,10 +2,10 @@ package service_test
 
 import (
 	"context"
-	"testing"
+	"github.com/desponda/inbox-whisperer/internal/models"
 	"github.com/desponda/inbox-whisperer/internal/service"
 	"github.com/desponda/inbox-whisperer/internal/service/gmail"
-	"github.com/desponda/inbox-whisperer/internal/models"
+	"testing"
 )
 
 type dummyProvider struct {

@@ -12,8 +12,8 @@ import (
 	"time"
 
 	"github.com/desponda/inbox-whisperer/internal/config"
-	"github.com/desponda/inbox-whisperer/internal/session"
 	"github.com/desponda/inbox-whisperer/internal/models"
+	"github.com/desponda/inbox-whisperer/internal/session"
 	"github.com/go-chi/chi/v5"
 	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/google"
@@ -45,10 +45,10 @@ func NewAuthHandler(cfg *config.AppConfig, userTokens data.UserTokenRepository) 
 func (h *AuthHandler) HandleLogin(w http.ResponseWriter, r *http.Request) {
 	// Generate a random state token for CSRF protection
 	state := generateRandomState(32)
-	
+
 	session.SetSessionValue(w, r, "oauth_state", state)
 	url := h.OAuthConfig.AuthCodeURL(state, oauth2.AccessTypeOffline)
-	
+
 	http.Redirect(w, r, url, http.StatusFound)
 }
 
@@ -63,13 +63,11 @@ func generateRandomState(length int) string {
 
 // HandleCallback handles the OAuth2 redirect from Google
 func (h *AuthHandler) HandleCallback(w http.ResponseWriter, r *http.Request) {
-	
-	
 
 	ctx := context.Background()
 	code := r.URL.Query().Get("code")
 	if code == "" {
-		
+
 		http.Error(w, "missing code", http.StatusBadRequest)
 		return
 	}
@@ -77,7 +75,7 @@ func (h *AuthHandler) HandleCallback(w http.ResponseWriter, r *http.Request) {
 	state := r.URL.Query().Get("state")
 	expectedState := session.GetSessionValue(r, "oauth_state")
 	if state == "" || expectedState == "" || state != expectedState {
-		
+
 		http.Error(w, "invalid state parameter", http.StatusBadRequest)
 		return
 	}
@@ -122,7 +120,10 @@ func getUserIDAndEmail(ctx context.Context, tok *oauth2.Token) (string, string, 
 }
 
 func ensureUserExists(ctx context.Context, userTokens data.UserTokenRepository, userID, email string, tok *oauth2.Token) {
-	db, ok := userTokens.(interface{ GetByID(context.Context, string) (*models.User, error); Create(context.Context, *models.User) error })
+	db, ok := userTokens.(interface {
+		GetByID(context.Context, string) (*models.User, error)
+		Create(context.Context, *models.User) error
+	})
 	if !ok {
 		return
 	}
@@ -134,7 +135,9 @@ func ensureUserExists(ctx context.Context, userTokens data.UserTokenRepository, 
 		client := oauth2.NewClient(ctx, oauth2.StaticTokenSource(tok))
 		resp, err := client.Get("https://www.googleapis.com/oauth2/v2/userinfo")
 		if err == nil && resp.StatusCode == 200 {
-			var profile struct { Email string `json:"email"` }
+			var profile struct {
+				Email string `json:"email"`
+			}
 			if err := json.NewDecoder(resp.Body).Decode(&profile); err == nil && profile.Email != "" {
 				email = profile.Email
 			}
@@ -151,14 +154,14 @@ func ensureUserExists(ctx context.Context, userTokens data.UserTokenRepository, 
 }
 
 func setSessionToken(w http.ResponseWriter, r *http.Request, userID, token string) {
-	
+
 	session.SetSession(w, r, userID, token)
-	
+
 	w.WriteHeader(http.StatusOK)
 	if _, err := w.Write([]byte("OAuth2 flow complete. Token stored in DB and session for user: " + userID)); err != nil {
-    http.Error(w, "failed to write response", http.StatusInternalServerError)
-    return
-}
+		http.Error(w, "failed to write response", http.StatusInternalServerError)
+		return
+	}
 }
 
 // exchangeCodeForToken exchanges an OAuth2 code for a token
@@ -169,7 +172,6 @@ var exchangeCodeForToken = func(h *AuthHandler, ctx context.Context, code string
 	}
 	return tok, nil
 }
-
 
 // fetchGoogleUserID fetches the user's Google ID or email from the UserInfo endpoint
 var fetchGoogleUserID = func(ctx context.Context, tok *oauth2.Token, userinfoURL string) (string, error) {
@@ -191,7 +193,6 @@ var fetchGoogleUserID = func(ctx context.Context, tok *oauth2.Token, userinfoURL
 	}
 	return resp.Email, nil
 }
-
 
 // RegisterAuthRoutes adds the auth endpoints to the router
 func RegisterAuthRoutes(r chi.Router, cfg *config.AppConfig, userTokens data.UserTokenRepository) {

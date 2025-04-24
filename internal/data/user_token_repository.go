@@ -13,8 +13,6 @@ type UserTokenRepository interface {
 	GetUserToken(ctx context.Context, userID string) (*oauth2.Token, error)
 }
 
-
-
 func (db *DB) SaveUserToken(ctx context.Context, userID string, token *oauth2.Token) error {
 	tokBytes, err := json.Marshal(token)
 	if err != nil {

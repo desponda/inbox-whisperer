@@ -19,18 +19,18 @@ const (
 
 // ProviderConfig represents a user's linked provider account (simplified)
 type ProviderConfig struct {
-	UserID   string
-	Type     ProviderType
+	UserID string
+	Type   ProviderType
 	// ...tokens, config, etc.
 }
 
 // EmailProviderFactory returns providers for a user
 // (in real usage, would query DB for user's linked accounts)
 type EmailProviderFactory struct {
-	mu        sync.RWMutex
-	creators  map[ProviderType]func(cfg ProviderConfig) (EmailProvider, error)
+	mu       sync.RWMutex
+	creators map[ProviderType]func(cfg ProviderConfig) (EmailProvider, error)
 	// In-memory mapping for demo; replace with DB in prod
-	linked    map[string][]ProviderConfig // userID -> []ProviderConfig
+	linked map[string][]ProviderConfig // userID -> []ProviderConfig
 }
 
 func NewEmailProviderFactory() *EmailProviderFactory {

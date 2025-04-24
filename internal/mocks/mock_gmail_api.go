@@ -6,9 +6,9 @@ package mocks
 
 import (
 	"context"
-	"reflect"
 	gomock "github.com/golang/mock/gomock"
 	gmail "google.golang.org/api/gmail/v1"
+	"reflect"
 )
 
 // MockGmailAPI is a mock of GmailAPI interface.
@@ -35,7 +35,9 @@ func (m *MockGmailAPI) EXPECT() *MockGmailAPIMockRecorder {
 }
 
 // UsersMessagesGet mocks base method.
-func (m *MockGmailAPI) UsersMessagesGet(userID, msgID string) interface{ Do(context.Context) (*gmail.Message, error) } {
+func (m *MockGmailAPI) UsersMessagesGet(userID, msgID string) interface {
+	Do(context.Context) (*gmail.Message, error)
+} {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "UsersMessagesGet", userID, msgID)
 	ret0, _ := ret[0].(*MockUsersMessagesGetCall)

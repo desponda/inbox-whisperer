@@ -5,19 +5,18 @@ import _ "github.com/jackc/pgx/v5/stdlib" // Register pgx as a database/sql driv
 import (
 	"context"
 	"encoding/base64"
-	"github.com/desponda/inbox-whisperer/internal/models"
 	"fmt"
+	"github.com/desponda/inbox-whisperer/internal/models"
 	"testing"
 	"time"
 
 	"github.com/desponda/inbox-whisperer/internal/data"
-	
+
 	"github.com/desponda/inbox-whisperer/internal/session"
 	"golang.org/x/oauth2"
 	"google.golang.org/api/gmail/v1"
 	// "github.com/golang/mock/gomock"
 )
-
 
 // mockToken returns a dummy OAuth2 token for tests
 func mockToken() *oauth2.Token {
@@ -95,14 +94,34 @@ func TestGmailService_CachingE2E(t *testing.T) {
 	// }
 }
 
-// --- UNIT TESTS for extractPlainTextBody and getHeader ---
+// mock for Get call
+
+type mockGetCall struct {
+	msg *gmail.Message
+	err error
+}
+
+func (m *mockGetCall) Do(ctx context.Context) (*gmail.Message, error) {
+	return m.msg, m.err
+}
+
+// mock for List call
+
+type mockListCall struct {
+	resp *gmail.ListMessagesResponse
+	err  error
+}
+
+func (m *mockListCall) Do() (*gmail.ListMessagesResponse, error) {
+	return m.resp, m.err
+}
 
 func TestExtractPlainTextBody(t *testing.T) {
 	plain := "Hello, world!"
 	encoded := base64.RawURLEncoding.EncodeToString([]byte(plain))
 	payload := &gmail.MessagePart{
 		MimeType: "text/plain",
-		Body: &gmail.MessagePartBody{Data: encoded},
+		Body:     &gmail.MessagePartBody{Data: encoded},
 	}
 	if got := extractPlainTextBody(payload); got != plain {
 		t.Errorf("expected plain body, got %q", got)
@@ -115,11 +134,11 @@ func TestExtractPlainTextBody(t *testing.T) {
 		Parts: []*gmail.MessagePart{
 			{
 				MimeType: "text/html",
-				Body: &gmail.MessagePartBody{Data: base64.RawURLEncoding.EncodeToString([]byte("<b>HTML</b>"))},
+				Body:     &gmail.MessagePartBody{Data: base64.RawURLEncoding.EncodeToString([]byte("<b>HTML</b>"))},
 			},
 			{
 				MimeType: "text/plain",
-				Body: &gmail.MessagePartBody{Data: encoded2},
+				Body:     &gmail.MessagePartBody{Data: encoded2},
 			},
 		},
 	}

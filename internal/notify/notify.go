@@ -5,7 +5,7 @@ import (
 )
 
 var gmailSyncStatus = struct {
-	m sync.RWMutex
+	m      sync.RWMutex
 	status map[string]bool
 }{status: make(map[string]bool)}
 

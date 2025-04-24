@@ -1,10 +1,10 @@
 package api
 
 import (
-	"net/http"
-	"github.com/go-chi/chi/v5"
 	"github.com/desponda/inbox-whisperer/internal/service"
 	"github.com/desponda/inbox-whisperer/internal/session"
+	"github.com/go-chi/chi/v5"
+	"net/http"
 )
 
 type UserHandler struct {
@@ -26,10 +26,10 @@ func (h *UserHandler) UpdateUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	userIDVal := r.Context().Value(ContextUserIDKey)
-	
+
 	userID, ok := userIDVal.(string)
 	if !ok || userID == "" {
-		
+
 		RespondError(w, http.StatusUnauthorized, "not authenticated: no userID in context")
 		return
 	}
@@ -57,10 +57,10 @@ func (h *UserHandler) DeleteUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	userIDVal := r.Context().Value(ContextUserIDKey)
-	
+
 	userID, ok := userIDVal.(string)
 	if !ok || userID == "" {
-		
+
 		RespondError(w, http.StatusUnauthorized, "not authenticated: no userID in context")
 		return
 	}
@@ -101,10 +101,10 @@ func (h *UserHandler) GetUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	userIDVal := r.Context().Value(ContextUserIDKey)
-	
+
 	userID, ok := userIDVal.(string)
 	if !ok || userID == "" {
-		
+
 		RespondError(w, http.StatusUnauthorized, "not authenticated: no userID in context")
 		return
 	}

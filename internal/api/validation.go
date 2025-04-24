@@ -2,9 +2,9 @@ package api
 
 import (
 	"errors"
-	"net/http"
-	"github.com/go-chi/chi/v5"
 	"github.com/desponda/inbox-whisperer/internal/session"
+	"github.com/go-chi/chi/v5"
+	"net/http"
 )
 
 // ValidateIDParam checks if the chi URL param 'id' is present and returns it, or an error.

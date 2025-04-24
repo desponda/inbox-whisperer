@@ -27,7 +27,8 @@ func TestHealthz(t *testing.T) {
 	}
 	if resp.StatusCode != http.StatusOK {
 		t.Errorf("expected 200 OK, got %v", resp.Status)
-	}}
+	}
+}
 
 func TestServerStartupWithValidConfig(t *testing.T) {
 	cfgText := `{"google":{"client_id":"id","client_secret":"secret","redirect_url":"http://localhost"},"openai":{"api_key":"sk-abc"},"server":{"port":"0","db_url":"postgres://user:pass@localhost/db"}}`
@@ -57,4 +58,3 @@ func TestServerStartupWithMissingConfig(t *testing.T) {
 		t.Error("expected error for missing config file, got nil")
 	}
 }
-

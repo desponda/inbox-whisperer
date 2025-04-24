@@ -19,7 +19,6 @@ type EmailHandler struct {
 	UserTokens data.UserTokenRepository
 }
 
-
 func NewEmailHandler(svc service.EmailService, userTokens data.UserTokenRepository) *EmailHandler {
 	return &EmailHandler{Service: svc, UserTokens: userTokens}
 }
@@ -75,7 +74,6 @@ func (h *EmailHandler) GetMessageContentHandler(w http.ResponseWriter, r *http.R
 		return
 	}
 }
-
 
 type paginationKey struct{}
 

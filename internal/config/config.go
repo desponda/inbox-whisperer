@@ -21,9 +21,9 @@ type ServerConfig struct {
 }
 
 type AppConfig struct {
-	Google GoogleConfig  `json:"google"`
-	OpenAI OpenAIConfig  `json:"openai"`
-	Server ServerConfig  `json:"server"`
+	Google GoogleConfig `json:"google"`
+	OpenAI OpenAIConfig `json:"openai"`
+	Server ServerConfig `json:"server"`
 }
 
 func LoadConfig(path string) (*AppConfig, error) {

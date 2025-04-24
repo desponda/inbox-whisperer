@@ -2,21 +2,19 @@ package service
 
 import (
 	"context"
+	"fmt"
+	"github.com/desponda/inbox-whisperer/internal/models"
+	"github.com/desponda/inbox-whisperer/internal/service/gmail"
+	"golang.org/x/oauth2"
 	"sort"
 	"sync"
 	"time"
-	"fmt"
-	"golang.org/x/oauth2"
-	"github.com/desponda/inbox-whisperer/internal/models"
-	"github.com/desponda/inbox-whisperer/internal/service/gmail"
 )
 
 type CtxKeyUserID struct{}
 type CtxKeyLimit struct{}
 
 var summaryCache sync.Map // per-user summary cache
-
-
 
 type MultiProviderEmailService struct {
 	Factory *EmailProviderFactory
@@ -26,26 +24,24 @@ func NewMultiProviderEmailService(factory *EmailProviderFactory) *MultiProviderE
 	return &MultiProviderEmailService{Factory: factory}
 }
 
-
-
 func (s *MultiProviderEmailService) FetchMessages(ctx context.Context, token *oauth2.Token) ([]models.EmailMessage, error) {
 	userIDVal := ctx.Value(CtxKeyUserID{})
-if userIDVal == nil {
-	return nil, fmt.Errorf("userID context key missing")
-}
-userID, ok := userIDVal.(string)
-if !ok {
-	return nil, fmt.Errorf("userID context key not a string")
-}
+	if userIDVal == nil {
+		return nil, fmt.Errorf("userID context key missing")
+	}
+	userID, ok := userIDVal.(string)
+	if !ok {
+		return nil, fmt.Errorf("userID context key not a string")
+	}
 	providers, err := s.Factory.ProvidersForUser(ctx, userID)
 	if err != nil {
 		return nil, err
 	}
 	limit := 10
-if l, ok := ctx.Value(CtxKeyLimit{}).(int); ok && l > 0 {
-	limit = l
-}
-params := gmail.FetchParams{Limit: limit} // limit extracted from context, default 10
+	if l, ok := ctx.Value(CtxKeyLimit{}).(int); ok && l > 0 {
+		limit = l
+	}
+	params := gmail.FetchParams{Limit: limit} // limit extracted from context, default 10
 	allSummaries := make([]models.EmailSummary, 0)
 	for _, prov := range providers {
 		summaries, err := prov.FetchSummaries(ctx, userID, params)
@@ -85,7 +81,7 @@ params := gmail.FetchParams{Limit: limit} // limit extracted from context, defau
 	}
 	type cacheEntry struct {
 		Summaries []models.EmailMessage
-		Expires  time.Time
+		Expires   time.Time
 	}
 	if v, ok := summaryCache.Load(cacheKey); ok {
 		entry := v.(cacheEntry)
@@ -95,7 +91,7 @@ params := gmail.FetchParams{Limit: limit} // limit extracted from context, defau
 	}
 
 	// Convert to []models.EmailMessage for now
-final := make([]models.EmailMessage, len(result))
+	final := make([]models.EmailMessage, len(result))
 	for i, s := range result {
 		final[i] = models.EmailMessage{
 			EmailMessageID: s.ID,
@@ -111,7 +107,7 @@ final := make([]models.EmailMessage, len(result))
 	// Update cache for this user/limit
 	summaryCache.Store(cacheKey, cacheEntry{
 		Summaries: final,
-		Expires:  time.Now().Add(60 * time.Second),
+		Expires:   time.Now().Add(60 * time.Second),
 	})
 	return final, nil
 }
@@ -119,13 +115,13 @@ final := make([]models.EmailMessage, len(result))
 // FetchMessageContent fetches the full message from the right provider.
 func (s *MultiProviderEmailService) FetchMessageContent(ctx context.Context, token *oauth2.Token, id string) (*models.EmailMessage, error) {
 	userIDVal := ctx.Value(CtxKeyUserID{})
-if userIDVal == nil {
-	return nil, fmt.Errorf("userID context key missing")
-}
-userID, ok := userIDVal.(string)
-if !ok {
-	return nil, fmt.Errorf("userID context key not a string")
-}
+	if userIDVal == nil {
+		return nil, fmt.Errorf("userID context key missing")
+	}
+	userID, ok := userIDVal.(string)
+	if !ok {
+		return nil, fmt.Errorf("userID context key not a string")
+	}
 	providers, err := s.Factory.ProvidersForUser(ctx, userID)
 	if err != nil {
 		return nil, err
@@ -135,14 +131,14 @@ if !ok {
 		if err == nil {
 			return &models.EmailMessage{
 				EmailMessageID: msg.EmailMessageID,
-				ThreadID: msg.ThreadID,
-				Subject: msg.Subject,
-				Sender: msg.Sender,
-				Recipient: msg.Recipient,
-				Snippet: msg.Snippet,
-				Body: msg.Body,
-				InternalDate: msg.InternalDate,
-				Date: msg.Date,
+				ThreadID:       msg.ThreadID,
+				Subject:        msg.Subject,
+				Sender:         msg.Sender,
+				Recipient:      msg.Recipient,
+				Snippet:        msg.Snippet,
+				Body:           msg.Body,
+				InternalDate:   msg.InternalDate,
+				Date:           msg.Date,
 				// ...other fields
 			}, nil
 		}

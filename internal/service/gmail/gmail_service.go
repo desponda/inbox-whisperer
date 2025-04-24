@@ -11,9 +11,9 @@ import (
 
 	"github.com/desponda/inbox-whisperer/internal/data"
 	"github.com/desponda/inbox-whisperer/internal/models"
-	"github.com/desponda/inbox-whisperer/internal/session"
 	"github.com/desponda/inbox-whisperer/internal/notify"
-	
+	"github.com/desponda/inbox-whisperer/internal/session"
+
 	"golang.org/x/oauth2"
 	"google.golang.org/api/gmail/v1"
 	"google.golang.org/api/option"
@@ -30,9 +30,45 @@ func extractUserIDFromContext(ctx context.Context) string {
 //go:generate mockgen -destination=internal/service/mocks/mock_gmail_api.go -package=mocks . GmailAPI
 
 type GmailAPI interface {
-	UsersMessagesGet(userID, msgID string) interface{
+	UsersMessagesGet(userID, msgID string) interface {
 		Do(ctx context.Context) (*gmail.Message, error)
 	}
+	UsersMessagesList(userID string) interface {
+		Do() (*gmail.ListMessagesResponse, error)
+	}
+}
+
+// Adapters for real Gmail API to conform to our interface
+
+type realUsersMessagesGetCall struct {
+	call *gmail.UsersMessagesGetCall
+}
+
+func (r *realUsersMessagesGetCall) Do(ctx context.Context) (*gmail.Message, error) {
+	return r.call.Context(ctx).Do()
+}
+
+type realUsersMessagesListCall struct {
+	call *gmail.UsersMessagesListCall
+}
+
+func (r *realUsersMessagesListCall) Do() (*gmail.ListMessagesResponse, error) {
+	return r.call.Do()
+}
+
+type realGmailAPI struct {
+	client *gmail.Service
+}
+
+func (r *realGmailAPI) UsersMessagesGet(userID, msgID string) interface {
+	Do(ctx context.Context) (*gmail.Message, error)
+} {
+	return &realUsersMessagesGetCall{call: r.client.Users.Messages.Get(userID, msgID).Format("metadata")}
+}
+func (r *realGmailAPI) UsersMessagesList(userID string) interface {
+	Do() (*gmail.ListMessagesResponse, error)
+} {
+	return &realUsersMessagesListCall{call: r.client.Users.Messages.List(userID).LabelIds("INBOX").Q("")}
 }
 
 type UsersMessagesGetCall interface {
@@ -40,10 +76,9 @@ type UsersMessagesGetCall interface {
 }
 
 type GmailService struct {
-	Repo data.EmailMessageRepository
+	Repo     data.EmailMessageRepository
 	GmailAPI GmailAPI // optional: for testing
 }
-
 
 func NewGmailService(repo data.EmailMessageRepository) *GmailService {
 	return &GmailService{Repo: repo, GmailAPI: nil}
@@ -62,18 +97,17 @@ func getGmailClient(ctx context.Context, token *oauth2.Token) (*gmail.Service, e
 
 // MessageSummary is a minimal summary of a Gmail message
 type MessageSummary struct {
-	ID        string `json:"id"`
-	ThreadID  string `json:"thread_id"`
-	Snippet   string `json:"snippet"`
-	From      string `json:"from"`
-	Subject   string `json:"subject"`
-	InternalDate int64 `json:"internal_date"`
-	CursorAfterID string `json:"cursor_after_id,omitempty"`
-	CursorAfterInternalDate int64 `json:"cursor_after_internal_date,omitempty"`
+	ID                      string `json:"id"`
+	ThreadID                string `json:"thread_id"`
+	Snippet                 string `json:"snippet"`
+	From                    string `json:"from"`
+	Subject                 string `json:"subject"`
+	InternalDate            int64  `json:"internal_date"`
+	CursorAfterID           string `json:"cursor_after_id,omitempty"`
+	CursorAfterInternalDate int64  `json:"cursor_after_internal_date,omitempty"`
 }
 
 // MessageContent is the full content of a Gmail message
-
 
 // FetchMessageContent fetches the full content of a Gmail message by ID, using cache if fresh.
 func (s *GmailService) FetchMessageContent(ctx context.Context, token *oauth2.Token, id string) (*models.EmailMessage, error) {
@@ -157,9 +191,6 @@ func fetchGmailMessageClient(ctx context.Context, token *oauth2.Token, id string
 	return msg, nil
 }
 
-
-
-
 type CtxKeyAfterID struct{}
 type CtxKeyAfterInternalDate struct{}
 
@@ -204,7 +235,6 @@ func (s *GmailService) FetchMessages(ctx context.Context, token *oauth2.Token) (
 	return result, nil
 }
 
-
 // fetchUserMessages fetches messages for a user with cursor-based pagination (from DB only)
 func (s *GmailService) fetchUserMessages(ctx context.Context, userID string, pageSize int, afterInternalDate int64, afterID string) ([]*models.EmailMessage, error) {
 	if afterID != "" && afterInternalDate > 0 {
@@ -216,19 +246,36 @@ func (s *GmailService) fetchUserMessages(ctx context.Context, userID string, pag
 // syncLatestSummariesFromGmail fetches the latest message summaries from Gmail API and upserts them into the DB.
 // This is run in the background after each inbox load for best UX.
 func (s *GmailService) syncLatestSummariesFromGmail(ctx context.Context, token *oauth2.Token, userID string, pageSize int) error {
-	// Use Gmail API's Users.Messages.List to get latest message IDs
-	client, err := getGmailClient(ctx, token)
-	if err != nil {
-		return err
+	var listCall interface {
+		Do() (*gmail.ListMessagesResponse, error)
 	}
-	listCall := client.Users.Messages.List("me").MaxResults(int64(pageSize)).LabelIds("INBOX").Q("")
+	var getCall func(msgID string) interface {
+		Do(ctx context.Context) (*gmail.Message, error)
+	}
+
+	if s.GmailAPI != nil {
+		listCall = s.GmailAPI.UsersMessagesList("me")
+		getCall = func(msgID string) interface {
+			Do(ctx context.Context) (*gmail.Message, error)
+		} { return s.GmailAPI.UsersMessagesGet("me", msgID) }
+	} else {
+		client, err := getGmailClient(ctx, token)
+		if err != nil {
+			return err
+		}
+		realAPI := &realGmailAPI{client: client}
+		listCall = realAPI.UsersMessagesList("me")
+		getCall = func(msgID string) interface {
+			Do(ctx context.Context) (*gmail.Message, error)
+		} { return realAPI.UsersMessagesGet("me", msgID) }
+	}
+
 	resp, err := listCall.Do()
 	if err != nil {
 		return err
 	}
 	for _, m := range resp.Messages {
-		// Fetch summary (minimal fields, not full body)
-		msg, err := client.Users.Messages.Get("me", m.Id).Format("metadata").Do()
+		msg, err := getCall(m.Id).Do(ctx)
 		if err != nil {
 			continue // skip errored messages
 		}
@@ -253,8 +300,6 @@ func (s *GmailService) syncLatestSummariesFromGmail(ctx context.Context, token *
 	}
 	return nil
 }
-
-
 
 // getHeader returns the value for a given header name (case-insensitive)
 func getHeader(headers []*gmail.MessagePartHeader, name string) string {
@@ -287,7 +332,6 @@ func extractPlainTextBody(payload *gmail.MessagePart) string {
 	}
 	return ""
 }
-
 
 // decodeGmailBody decodes a base64url-encoded Gmail message body
 func decodeGmailBody(data string) (string, error) {

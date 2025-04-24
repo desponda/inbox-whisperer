@@ -9,12 +9,12 @@ import (
 	"time"
 
 	"github.com/golang-migrate/migrate/v4"
-	_ "github.com/golang-migrate/migrate/v4/source/file"
 	_ "github.com/golang-migrate/migrate/v4/database/postgres"
+	_ "github.com/golang-migrate/migrate/v4/source/file"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/testcontainers/testcontainers-go"
 	postgrescontainer "github.com/testcontainers/testcontainers-go/modules/postgres"
 	"github.com/testcontainers/testcontainers-go/wait"
-	"github.com/testcontainers/testcontainers-go"
 )
 
 // SetupTestDB starts a Postgres container and returns a DB and cleanup func
@@ -35,7 +35,7 @@ func SetupTestDB(t *testing.T) (*DB, func()) {
 		postgrescontainer.WithDatabase("testdb"),
 		postgrescontainer.WithUsername("testuser"),
 		postgrescontainer.WithPassword("testpass"),
-		testcontainers.WithWaitStrategy(wait.ForListeningPort("5432/tcp").WithStartupTimeout(90 * time.Second)),
+		testcontainers.WithWaitStrategy(wait.ForListeningPort("5432/tcp").WithStartupTimeout(90*time.Second)),
 	)
 	if err != nil {
 		log("FAILED to start postgres container: %v", err)
