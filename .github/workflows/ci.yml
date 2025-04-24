@@ -117,6 +117,8 @@ jobs:
     needs: frontend-install
     steps:
       - uses: actions/checkout@v3
+      - name: Install dependencies
+        run: npm ci --prefix web
       - name: Lint frontend
         run: make ui-lint
 
@@ -125,6 +127,8 @@ jobs:
     needs: frontend-install
     steps:
       - uses: actions/checkout@v3
+      - name: Install dependencies
+        run: npm ci --prefix web
       - name: Test frontend
         run: make ui-test
 
@@ -133,6 +137,8 @@ jobs:
     needs: frontend-install
     steps:
       - uses: actions/checkout@v3
+      - name: Install dependencies
+        run: npm ci --prefix web
       - name: Build frontend
         run: make ui-build
 
