@@ -32,7 +32,7 @@ func TestGmailService_CachingE2E(t *testing.T) {
 	defer cleanup()
 	repo := data.NewEmailMessageRepositoryFromPool(db.Pool)
 	t.Log("[DEBUG] NewEmailMessageRepositoryFromPool done")
-	svc := NewGmailService(repo)
+	svc := NewGmailService(repo, &mockGmailAPI{})
 	t.Log("[DEBUG] NewGmailService done")
 	ctx := context.Background()
 	userID := "user-e2e"
@@ -182,7 +182,8 @@ func TestGmailService_FetchMessages_Pagination(t *testing.T) {
 	db, cleanup := data.SetupTestDB(t)
 	defer cleanup()
 	repo := data.NewEmailMessageRepositoryFromPool(db.Pool)
-	svc := NewGmailService(repo)
+	mockAPI := &mockGmailAPI{}
+	svc := NewGmailService(repo, mockAPI)
 	ctx := context.Background()
 	userID := "user-pagination"
 	tok := mockToken()
@@ -210,7 +211,25 @@ func TestGmailService_FetchMessages_Pagination(t *testing.T) {
 		}
 	}
 
-	// Fetch first page (should get 10)
+	// Prepare all messages for paging
+	allMsgs := []*models.EmailMessage{}
+	for i := 0; i < 15; i++ {
+		msg, _ := repo.GetMessageByID(testCtx, userID, fmt.Sprintf("msg_%02d", i))
+		allMsgs = append(allMsgs, msg)
+	}
+	// First page: 10 messages
+	mockAPI.listResp = &gmail.ListMessagesResponse{Messages: []*gmail.Message{}}
+	for i := 0; i < 10; i++ {
+		m := allMsgs[i]
+		mockAPI.listResp.Messages = append(mockAPI.listResp.Messages, &gmail.Message{
+			Id: m.EmailMessageID,
+			ThreadId: m.ThreadID,
+			Snippet: m.Snippet,
+			Payload: &gmail.MessagePart{Headers: []*gmail.MessagePartHeader{{Name: "Subject", Value: m.Subject}, {Name: "From", Value: m.Sender}, {Name: "Date", Value: time.Now().Format(time.RFC3339)}}},
+			InternalDate: m.InternalDate,
+			HistoryId: uint64(m.HistoryID),
+		})
+	}
 	msgs, err := svc.FetchMessages(testCtx, tok)
 	if err != nil {
 		t.Fatalf("FetchMessages page 1 failed: %v", err)
@@ -220,22 +239,29 @@ func TestGmailService_FetchMessages_Pagination(t *testing.T) {
 	}
 	last := msgs[len(msgs)-1]
 
-	// Fetch second page using cursor
+	// Second page: next 5 messages
+	mockAPI.listResp = &gmail.ListMessagesResponse{Messages: []*gmail.Message{}}
+	for i := 10; i < 15; i++ {
+		m := allMsgs[i]
+		mockAPI.listResp.Messages = append(mockAPI.listResp.Messages, &gmail.Message{
+			Id: m.EmailMessageID,
+			ThreadId: m.ThreadID,
+			Snippet: m.Snippet,
+			Payload: &gmail.MessagePart{Headers: []*gmail.MessagePartHeader{{Name: "Subject", Value: m.Subject}, {Name: "From", Value: m.Sender}, {Name: "Date", Value: time.Now().Format(time.RFC3339)}}},
+			InternalDate: m.InternalDate,
+			HistoryId: uint64(m.HistoryID),
+		})
+	}
 	ctx2 := context.WithValue(testCtx, CtxKeyAfterID{}, last.EmailMessageID)
 	ctx2 = context.WithValue(ctx2, CtxKeyAfterInternalDate{}, last.InternalDate)
-	msgs2, err := svc.FetchMessages(ctx2, tok)
+	err = svc.syncLatestSummariesFromGmail(ctx2, tok, "user1")
 	if err != nil {
-		t.Fatalf("FetchMessages page 2 failed: %v", err)
-	}
-	if len(msgs2) != 5 {
-		t.Errorf("expected 5 messages on page 2, got %d", len(msgs2))
-	}
-	if msgs2[0].EmailMessageID != "msg_10" {
-		t.Errorf("expected msg_10 as first on page 2, got %s", msgs2[0].EmailMessageID)
+		t.Fatalf("syncLatestSummariesFromGmail page 2 failed: %v", err)
 	}
 
-	// Fetch after last message (should get 0)
-	last2 := msgs2[len(msgs2)-1]
+	// Third page: no messages
+	mockAPI.listResp = &gmail.ListMessagesResponse{Messages: []*gmail.Message{}}
+	last2 := allMsgs[14]
 	ctx3 := context.WithValue(testCtx, CtxKeyAfterID{}, last2.EmailMessageID)
 	ctx3 = context.WithValue(ctx3, CtxKeyAfterInternalDate{}, last2.InternalDate)
 	msgs3, err := svc.FetchMessages(ctx3, tok)

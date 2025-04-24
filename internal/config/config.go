@@ -16,8 +16,9 @@ type OpenAIConfig struct {
 }
 
 type ServerConfig struct {
-	Port  string `json:"port"`
-	DBUrl string `json:"db_url"`
+	Port     string `json:"port"`
+	DBUrl    string `json:"db_url"`
+	LogLevel string `json:"log_level"` // e.g. "info", "debug", "warn", "error"
 }
 
 type AppConfig struct {

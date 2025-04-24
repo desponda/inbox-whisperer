@@ -37,7 +37,7 @@ func (f *fakeRepo) DeleteMessagesForUser(ctx context.Context, userID string) err
 
 func TestGmailProvider_FetchSummaries(t *testing.T) {
 	repo := &fakeRepo{}
-	svc := NewGmailService(repo)
+	svc := NewGmailService(repo, &mockGmailAPI{})
 	provider := NewGmailProvider(svc)
 	ctx := context.Background()
 	ctx = session.ContextWithUserID(ctx, "user1")
@@ -56,7 +56,7 @@ func TestGmailProvider_FetchSummaries(t *testing.T) {
 
 	// Error path: underlying service error
 	errRepo := &fakeRepoWithError{}
-	svcErr := NewGmailService(errRepo)
+	svcErr := NewGmailService(errRepo, &mockGmailAPI{})
 	providerErr := NewGmailProvider(svcErr)
 	_, err = providerErr.FetchSummaries(ctx, "user1", params)
 	if err == nil {
@@ -139,7 +139,7 @@ func TestGmailProvider_FetchMessage(t *testing.T) {
 		HistoryId:    42,
 	}
 	mockAPI := &mockGmailAPI{msg: mockMsg, err: nil}
-	svc := NewGmailServiceWithAPI(repo, mockAPI)
+	svc := NewGmailService(repo, mockAPI)
 	provider := &GmailProvider{Service: svc}
 	ctx := context.Background()
 	ctx = session.ContextWithUserID(ctx, "user1")

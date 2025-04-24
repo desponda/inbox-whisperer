@@ -44,7 +44,7 @@ func main() {
 
 	log.Info().Msgf("Server is ready to handle requests at :%s", cfg.Server.Port)
 	if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-		log.Fatal().Err(err).Msgf("Could not listen on :%s", cfg.Server.Port)
+		log.Fatal().Err(err).Msg("Could not listen")
 	}
 }
 
@@ -60,7 +60,13 @@ func mustLoadConfig() *config.AppConfig {
 func setupLogger(cfg *config.AppConfig) {
 	zerolog.TimeFieldFormat = zerolog.TimeFormatUnix
 	log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stderr})
-	// Optionally set log level from cfg.LogLevel here
+	if cfg != nil && cfg.Server.LogLevel != "" {
+		if level, err := zerolog.ParseLevel(cfg.Server.LogLevel); err == nil {
+			zerolog.SetGlobalLevel(level)
+		} else {
+			log.Warn().Str("level", cfg.Server.LogLevel).Msg("Invalid log level, using default")
+		}
+	}
 }
 
 func mustConnectDB(cfg *config.AppConfig) *data.DB {

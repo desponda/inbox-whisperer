@@ -62,6 +62,7 @@ CREATE TABLE IF NOT EXISTS email_messages (
     recipient TEXT,
     snippet TEXT,
     body TEXT,
+    html_body TEXT,
     internal_date BIGINT,
     history_id BIGINT,
     cached_at TIMESTAMP NOT NULL DEFAULT NOW(),

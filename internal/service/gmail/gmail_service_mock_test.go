@@ -14,6 +14,7 @@ import (
 // Only implements UsersMessagesGet for error/success simulation
 
 import "google.golang.org/api/gmail/v1"
+import "google.golang.org/api/googleapi"
 
 type mockGmailAPI struct {
 	msg      *gmail.Message
@@ -24,19 +25,44 @@ type mockGmailAPI struct {
 	getErr   error
 }
 
-func (m *mockGmailAPI) UsersMessagesGet(userID, msgID string) interface {
-	Do(context.Context) (*gmail.Message, error)
-} {
+// Implements GmailAPI
+func (m *mockGmailAPI) UsersMessagesGet(userID, msgID string) UsersMessagesGetCall {
+	var msg *gmail.Message
+	var err error
 	if m.msgMap != nil {
-		return &mockUsersMessagesGetCall{msg: m.msgMap[msgID], err: m.getErr}
+		msg = m.msgMap[msgID]
+		err = m.getErr
+	} else {
+		msg = m.msg
+		err = m.err
 	}
-	return &mockUsersMessagesGetCall{msg: m.msg, err: m.err}
+	return &mockUsersMessagesGetCall{msg: msg, err: err}
 }
 
-func (m *mockGmailAPI) UsersMessagesList(userID string) interface {
-	Do() (*gmail.ListMessagesResponse, error)
-} {
-	return &mockUsersMessagesListCall{resp: m.listResp, err: m.listErr}
+func (m *mockGmailAPI) UsersMessagesList(userID string) UsersMessagesListCall {
+	return &mockUsersMessagesListCallWithPaging{allMessages: m.listResp, err: m.listErr}
+}
+
+
+
+
+
+type mockUsersMessagesListCallWithPaging struct {
+	allMessages *gmail.ListMessagesResponse
+	err        error
+}
+
+func (c *mockUsersMessagesListCallWithPaging) Do(...googleapi.CallOption) (*gmail.ListMessagesResponse, error) {
+	// Simulate real paging: return a slice of messages after the cursor, if present
+	// For this mock, we return all messages if no cursor is set, else only those after the cursor
+	resp := &gmail.ListMessagesResponse{Messages: []*gmail.Message{}}
+	if c.allMessages == nil || len(c.allMessages.Messages) == 0 {
+		return resp, c.err
+	}
+	// No cursor simulation here because context is not passed. For real paging, the test should set m.listResp accordingly before each call.
+	// For now, just return all messages (default mock behavior)
+	resp.Messages = c.allMessages.Messages
+	return resp, c.err
 }
 
 type mockUsersMessagesListCall struct {
@@ -53,7 +79,7 @@ type mockUsersMessagesGetCall struct {
 	err error
 }
 
-func (c *mockUsersMessagesGetCall) Do(ctx context.Context) (*gmail.Message, error) {
+func (c *mockUsersMessagesGetCall) Do(...googleapi.CallOption) (*gmail.Message, error) {
 	return c.msg, c.err
 }
 
@@ -93,7 +119,7 @@ func TestGmailService_FetchMessageContent_ErrorPaths(t *testing.T) {
 	}
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			svc := NewGmailServiceWithAPI(repo, &mockGmailAPI{msg: tc.mockMsg, err: tc.mockErr})
+			svc := NewGmailService(repo, &mockGmailAPI{msg: tc.mockMsg, err: tc.mockErr})
 			msg, err := svc.fetchGmailMessage(ctx, tok, tc.inputID)
 			if tc.expectErr != "" {
 				if err == nil || err.Error() != tc.expectErr {
@@ -139,14 +165,14 @@ func TestGmailService_syncLatestSummariesFromGmail(t *testing.T) {
 		},
 	}
 
-	svc := NewGmailServiceWithAPI(repo, mockAPI)
+	svc := NewGmailService(repo, mockAPI)
 	ctx := context.Background()
-	userID := "user1"
+
 	tok := &oauth2.Token{AccessToken: "dummy"}
 
 	// Error path: list call fails
 	mockAPI.listErr = errors.New("list error")
-	err := svc.syncLatestSummariesFromGmail(ctx, tok, userID, 10)
+	err := svc.syncLatestSummariesFromGmail(ctx, tok, "user1")
 	if err == nil {
 		t.Errorf("expected error from list call, got nil")
 	}
@@ -155,7 +181,7 @@ func TestGmailService_syncLatestSummariesFromGmail(t *testing.T) {
 	mockAPI.listErr = nil
 	mockAPI.getErr = errors.New("get error")
 	repo.upsertCount = 0
-	err = svc.syncLatestSummariesFromGmail(ctx, tok, userID, 10)
+	err = svc.syncLatestSummariesFromGmail(ctx, tok, "user1")
 	if err != nil {
 		t.Errorf("expected no error, got %v", err)
 	}
@@ -166,7 +192,7 @@ func TestGmailService_syncLatestSummariesFromGmail(t *testing.T) {
 	// Success path
 	mockAPI.getErr = nil
 	repo.upsertCount = 0
-	err = svc.syncLatestSummariesFromGmail(ctx, tok, userID, 10)
+	err = svc.syncLatestSummariesFromGmail(ctx, tok, "user1")
 	if err != nil {
 		t.Errorf("expected no error, got %v", err)
 	}

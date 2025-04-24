@@ -19,7 +19,7 @@ func TestGmailService_Caching(t *testing.T) {
 	userID := "user123"
 	msgID := "gmail_msg_1"
 	testCtx := session.ContextWithUserID(ctx, userID)
-	_ = NewGmailService(repo) // for completeness, but not used in this unit test
+	_ = NewGmailService(repo, &mockGmailAPI{}) // for completeness, but not used in this unit test
 
 	// Insert a fresh message (cache hit)
 	msg := &models.EmailMessage{

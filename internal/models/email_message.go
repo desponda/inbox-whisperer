@@ -16,7 +16,8 @@ type EmailMessage struct {
 	Sender                   string
 	Recipient                string
 	Snippet                  string
-	Body                     string
+	Body                     string // Plain text email body
+	HTMLBody                 string // HTML part of email, if present
 	InternalDate             int64
 	Date                     string // RFC 2822/3339 date string (provider-agnostic)
 	HistoryID                int64
