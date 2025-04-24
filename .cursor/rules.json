@@ -1,0 +1,17 @@
+{
+  "version": 1,
+  "rules": [
+    {
+      "name": "Development Documentation",
+      "pattern": "developing.md",
+      "remember": true,
+      "autoOpen": true
+    },
+    {
+      "name": "Feature Documentation",
+      "pattern": "features/*.md",
+      "remember": true,
+      "autoOpen": false
+    }
+  ]
+} 
