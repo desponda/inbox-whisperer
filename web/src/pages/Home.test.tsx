@@ -1,5 +1,6 @@
+import '@testing-library/jest-dom';
 jest.mock('../fonts/inter.css', () => ({}));
-import React from 'react';
+
 import { render, screen } from '@testing-library/react';
 import Home from './Home';
 import { UserProvider } from '../context/UserContext';

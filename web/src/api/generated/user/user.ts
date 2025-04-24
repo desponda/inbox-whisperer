@@ -30,7 +30,7 @@ import type {
   User,
   UserCreateRequest,
   UserUpdateRequest
-} from '.././';
+} from '../model.ts';
 
 
 
