@@ -4,6 +4,18 @@
 
 Inbox Whisperer is a suite of AI-powered tools designed to help users achieve and maintain inbox zero. Our first feature is the Inbox Zero Helper—a guided workflow that enables users to efficiently triage and organize their Gmail inbox, ensuring that only truly important emails remain.
 
+## Design System & Theme
+- **Theme:** All UI pages must use a modern, shiny dark gradient background (radial/linear blend of #0e1015, #181a20, #23243a, with blue/cyan highlight for shine).
+- **Font:** Use DM Sans throughout the app. Import via `web/public/fonts/dmsans.css` and set as the default font-family.
+- **Layout:** Hero and main sections should be centered, with bold, modern headlines and accent color highlights. Use the Home page as the reference for all future pages.
+- **Accent Color:** Use the accent color (`#14e0c9`) for highlights, buttons, and gradients.
+- **No glassmorphism or excessive shadows.**
+
+## Replicating the Installation
+- Ensure `web/public/fonts/dmsans.css` is present and imported in your main layout or each page.
+- Use Tailwind CSS and DaisyUI for UI components and utility classes.
+- See `README.md` for setup and install instructions.
+
 ## MVP Focus (2025-04-22)
 - Users sign up/log in via Google OAuth2
 - After login, users can fetch their emails (list)
@@ -46,7 +58,19 @@ Inbox Whisperer is a suite of AI-powered tools designed to help users achieve an
 - **Interfaces & Abstraction**: Use interfaces and abstract patterns where appropriate to enable flexibility, testing, and future extension.
 
 ### Frontend
-- **React**: The frontend will be built with React, focusing on a responsive and intuitive user experience.
+- **React + Vite + TypeScript**: The frontend is built as a strict, maintainable React SPA using Vite and TypeScript (strict mode enabled).
+- **UI Framework**: DaisyUI (on Tailwind v4) is used for all components to ensure accessible, modern, and consistent design. No custom CSS unless absolutely necessary—leverage DaisyUI and Tailwind utilities.
+- **Folder Structure**: All code is organized for scalability and maintainability:
+  - `src/components/` – Reusable UI components
+  - `src/pages/` – Top-level route/page components (e.g., Home, Login, Inbox)
+  - `src/api/` – Auto-generated API client and related code
+  - `src/hooks/` – Custom React hooks
+  - `src/types/` – TypeScript types and interfaces
+- **Linting & Formatting**: Prettier and ESLint (Airbnb config, React, TypeScript, Prettier integration) are strictly enforced. No sloppy or inconsistent code is tolerated.
+- **Routing**: Uses React Router for all navigation. No ad-hoc routing logic.
+- **OpenAPI Integration**: The OpenAPI spec is always kept up-to-date and used to auto-generate the TypeScript API client. No manual API types or fetch logic.
+- **Best Practices Only**: All code must be clean, modular, and easy to edit or extend in the future. No shortcuts or legacy patterns. All changes are tracked in `features/mvp-ui-react.md` for transparency and ongoing improvement.
+- **Living Checklist**: The implementation plan and progress for the UI is always reflected in `features/mvp-ui-react.md`. Any deviation from best practices must be justified and documented.
 
 ### API Contract
 - **OpenAPI Spec**: All API endpoints will be defined with OpenAPI. This ensures a strong, always-updated contract between frontend and backend, and enables auto-generation of the JavaScript client for React.

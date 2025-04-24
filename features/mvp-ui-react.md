@@ -1,4 +1,10 @@
-# MVP React UI Feature
+# Web UI (React)
+
+## Theme & Design Source of Truth
+- All MVP UI must use the modern, shiny dark gradient theme, DM Sans font, and centered SaaS hero layout.
+- The Home page is the reference design for all future UI screens.
+
+## MVP React UI Feature
 
 This document tracks the implementation plan and checklist for the Inbox Whisperer MVP user interface, built with React and best practices.
 
@@ -18,15 +24,19 @@ This document tracks the implementation plan and checklist for the Inbox Whisper
 ## Implementation Plan
 
 ### 1. Project Setup & Standards
-- [ ] Scaffold a new React project (Vite or Create React App, with TypeScript).
-- [ ] Configure Prettier, ESLint (Airbnb or recommended config), and TypeScript strict mode.
-- [ ] Set up a UI/component framework for consistent, accessible design.
-- [ ] Organize folder structure for scalability: `src/components`, `src/pages`, `src/api`, `src/hooks`, `src/types`.
+- [x] Scaffold a new React project (Vite + TypeScript, strict mode enabled).
+- [x] Configure Prettier, ESLint (Airbnb config), and TypeScript strict mode.
+- [x] Set up DaisyUI (with Tailwind v4) for consistent, accessible, and modern design.
+- [x] Organize folder structure for scalability: `src/components`, `src/pages`, `src/api`, `src/hooks`, `src/types`.
 
 ### 2. API Client
-- [ ] Ensure OpenAPI spec is up-to-date for all backend endpoints.
+- [x] Ensure OpenAPI spec is up-to-date for all backend endpoints.
 - [ ] Use openapi-generator or similar to auto-generate a TypeScript client.
 - [ ] Integrate the generated client for all API calls.
+
+---
+
+**Next:** Begin scaffolding the Home (landing) and Login pages using strict best practices and DaisyUI.
 
 ### 3. Authentication & Session
 - [ ] Implement Google OAuth2 login flow (trigger backend endpoint, handle redirects).

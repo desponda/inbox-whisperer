@@ -1,5 +1,10 @@
 # Features
 
+## Theme & UI Principles
+- All features and UI screens must use the new modern, shiny dark gradient theme (see Home page for reference in the web directory).
+- Use DM Sans font throughout.
+- Layouts should be centered, bold, and visually modern, matching the SaaS hero look.
+
 **Note: The Makefile and DB workflow have been updated. See Makefile/README for new targets, docker-migrate-up/down removed, use make help. Large/test output files are now ignored and removed from git.**
 
 ## Active Feature

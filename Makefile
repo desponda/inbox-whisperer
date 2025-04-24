@@ -1,4 +1,15 @@
 # Makefile for Inbox Whisperer
+
+# Install all dependencies and fonts
+install:
+	npm install --prefix web
+
+# Start the dev server
+start:
+	npm run dev --prefix web -- --host
+
+# Full setup (install + start)
+setup: install start
 #
 # Usage:
 #   make <target>
