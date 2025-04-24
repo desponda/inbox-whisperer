@@ -1,0 +1,13 @@
+{
+  "generatorName": "typescript-fetch",
+  "inputSpec": "../api/openapi.yaml",
+  "output": "./src/api/generated",
+  "additionalProperties": {
+    "typescriptThreePlus": true,
+    "withSeparateModelsAndApi": true,
+    "modelPropertyNaming": "camelCase",
+    "enumPropertyNaming": "camelCase",
+    "apiPackage": "apis",
+    "modelPackage": "models"
+  }
+}

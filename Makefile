@@ -15,11 +15,13 @@ setup: install start
 #   make <target>
 #
 # Key targets:
+#   ci                  Run all backend and frontend lint, typecheck, and tests (canonical local CI)
 #   ui-install          Install frontend dependencies
 #   ui-dev              Start React dev server
 #   ui-build            Build React app for production
 #   ui-lint             Lint frontend code
 #   ui-test             Run frontend tests
+#   ui-typecheck        Typecheck frontend code
 #   ui-coverage         Generate frontend coverage report
 #   ui-generate-api-client  Generate TypeScript API client from OpenAPI spec
 #   lint                Lint backend Go code
@@ -87,6 +89,26 @@ psql-migrate-up:
 .PHONY: migrate-create
 migrate-create:
 	@read -p "Migration name: " name; migrate create -dir ./migrations -ext sql $$name
+
+# Run all backend and frontend lint, typecheck, and tests (canonical local CI)
+.PHONY: ci
+ci: lint vet staticcheck tidy test ui-install ui-lint ui-typecheck ui-test ui-build
+
+.PHONY: ui-install ui-lint ui-typecheck ui-test ui-build
+ui-install:
+	npm install --prefix web
+
+ui-lint:
+	npm run lint --prefix web
+
+ui-typecheck:
+	npm run typecheck --prefix web
+
+ui-test:
+	npm test --prefix web
+
+ui-build:
+	npm run build --prefix web
 
 # Lint the codebase using golangci-lint (idempotent)
 .PHONY: lint vet staticcheck lint-strict

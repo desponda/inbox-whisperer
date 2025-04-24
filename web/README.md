@@ -1,5 +1,11 @@
 # React + TypeScript + Vite
 
+## Project-specific Jest Configuration
+- All CSS imports (including absolute/relative) are mocked using identity-obj-proxy (install as dev dependency).
+- If you see Jest errors for CSS imports, check that identity-obj-proxy is installed and moduleNameMapper/moduleFileExtensions are set up in jest.config.cjs.
+- When testing components that use React context/hooks, always wrap them in their required providers (e.g., UserProvider).
+
+
 This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
 
 Currently, two official plugins are available:

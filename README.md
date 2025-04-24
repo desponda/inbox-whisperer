@@ -24,6 +24,21 @@ Inbox Whisperer is an AI-powered tool to help users achieve and maintain inbox z
 ├── CHANGELOG.md   # Release notes
 ```
 
+## Development
+
+### Local CI (Run All Checks)
+
+To run all backend and frontend lint, typecheck, and tests locally (exactly as in GitHub Actions CI), use:
+
+```sh
+make ci
+```
+
+This is the canonical way to check your code before pushing or opening a PR.
+
+**Frontend Jest CSS Import Troubleshooting:**
+- If you see errors about CSS imports in Jest, make sure identity-obj-proxy is installed as a dev dependency and your jest.config.cjs has the correct moduleNameMapper/moduleFileExtensions settings.
+
 ## Quickstart: Full-Stack Dev Environment
 
 1. Copy `config.json.template` to `config.json` and fill in your real credentials (never commit secrets).

@@ -185,7 +185,7 @@ func TestGmailProvider_FetchMessage(t *testing.T) {
 	repo.err = nil
 	repo.msg = nil
 	mockAPI.err = errors.New("fetch error")
-	msg, err = provider.FetchMessage(ctx, tok, "id42")
+	_, err = provider.FetchMessage(ctx, tok, "id42")
 	if err == nil {
 		t.Errorf("expected error, got nil")
 	}

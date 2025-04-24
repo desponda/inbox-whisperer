@@ -21,9 +21,27 @@ func TestSomething(t *testing.T) {
 ```
 
 ## General Test Guidelines
+
+### Frontend (React/Jest) Test Requirements
+- All CSS imports must be mocked using identity-obj-proxy (install as dev dependency).
+- Ensure moduleNameMapper and moduleFileExtensions in jest.config.cjs are configured for CSS, SCSS, etc.
+- When testing components that use React context/hooks, always wrap them in their required providers (e.g., UserProvider).
+- All tests (frontend and backend) must pass locally before opening a PR.
 - Prefer table-driven tests and clear test names.
 - Clean up any resources you create.
 - If you need to test DB connection errors, you may use a static URL, but _never_ for real DB operations.
+
+## Pull Request Process
+
+### Local CI (Required Before PR)
+
+Before opening a PR, always run:
+
+```sh
+make ci
+```
+
+This runs all backend and frontend lint, typecheck, and tests, just like GitHub Actions CI. Your PR should only be opened if this passes locally.
 
 ---
 

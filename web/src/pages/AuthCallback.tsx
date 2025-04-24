@@ -34,7 +34,7 @@ const AuthCallback: React.FC = () => {
           setStatus('success');
           setTimeout(() => navigate('/'), 1200);
         }
-      } catch (err) {
+      } catch {
         setStatus('error');
         setError('Authentication failed.');
       }

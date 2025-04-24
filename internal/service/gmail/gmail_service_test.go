@@ -94,28 +94,6 @@ func TestGmailService_CachingE2E(t *testing.T) {
 	// }
 }
 
-// mock for Get call
-
-type mockGetCall struct {
-	msg *gmail.Message
-	err error
-}
-
-func (m *mockGetCall) Do(ctx context.Context) (*gmail.Message, error) {
-	return m.msg, m.err
-}
-
-// mock for List call
-
-type mockListCall struct {
-	resp *gmail.ListMessagesResponse
-	err  error
-}
-
-func (m *mockListCall) Do() (*gmail.ListMessagesResponse, error) {
-	return m.resp, m.err
-}
-
 func TestExtractPlainTextBody(t *testing.T) {
 	plain := "Hello, world!"
 	encoded := base64.RawURLEncoding.EncodeToString([]byte(plain))

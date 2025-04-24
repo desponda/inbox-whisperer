@@ -8,11 +8,14 @@
 
 This document tracks the implementation plan and checklist for the Inbox Whisperer MVP user interface, built with React and best practices.
 
-## Current Status (2025-04-23)
+## Current Status (2025-04-24)
 - All backend endpoints are stable, tested, and documented (see test coverage improvement plan).
 - OpenAPI spec is up-to-date; ready for API client generation.
 - Makefile now includes targets for frontend (ui/) development, linting, testing, and API client generation.
-- Ready to scaffold and implement the React UI.
+- Jest config is robust: CSS imports are properly mocked using identity-obj-proxy (must be installed as a dev dependency).
+- React context/provider usage in tests is correct (UserProvider wraps components as needed).
+- All frontend and backend tests pass locally (make ci, npm test).
+- Next: Spin up the app locally and verify UI/UX in the browser.
 
 ## Overview
 - Strict adherence to React and frontend best practices.
@@ -67,6 +70,10 @@ This document tracks the implementation plan and checklist for the Inbox Whisper
 - [ ] Core UI screens implemented
 - [ ] Codebase fully linted and tested
 - [ ] Makefile and developer scripts updated for fullstack workflow
+
+## Developer Experience
+
+- To run all checks locally (lint, typecheck, tests for backend and frontend), use `make ci` before PR or deploy.
 
 ---
 *This feature is active as of 2025-04-23. Update as progress is made.*
