@@ -1,11 +1,20 @@
 # Features
 
 ## Theme & UI Principles
-- All features and UI screens must use the new modern, shiny dark gradient theme (see Home page for reference in the web directory).
-- Use DM Sans font throughout.
-- Layouts should be centered, bold, and visually modern, matching the SaaS hero look.
+- All features and UI screens now use the new modern, shiny dark gradient theme (see Home page in the `web` directory for reference).
+- DM Sans is the default font throughout.
+- Layouts are centered, bold, visually modern, and follow SaaS best practices.
+- The UI app directory has been renamed from `mvp-ui` to `web` for clarity and best practice.
+- The dev workflow uses Makefile targets (`dev-up`, `dev-down`, `install`, `start`, `setup`) with the `web` directory. See Makefile for details.
+- All configuration is via `config.json.template` and `.env` for environment overrides.
+- The stack is orchestrated with Docker Compose (db, backend, frontend).
+- All docs and configs are now aligned with this workflow.
+- `.gitignore` now covers Node/React, font cache, and Python artifacts.
+- A reusable UI template and setup instructions are available at `/other/README-ui-template.md` for future projects.
 
-**Note: The Makefile and DB workflow have been updated. See Makefile/README for new targets, docker-migrate-up/down removed, use make help. Large/test output files are now ignored and removed from git.**
+**Update 2025-04-24:**
+- The Home page and all UI now match a premium SaaS look (Thunderbird/Linear-inspired), with a shiny dark gradient, DM Sans, and accent color.
+- All documentation and configs are aligned with the new structure and workflow.
 
 ## Active Feature
 

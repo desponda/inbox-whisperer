@@ -60,14 +60,19 @@ clean:
 db-up:
 	docker-compose up -d db
 
-# Bring up the DB and apply all migrations (IDEMPOTENT, recommended for local/dev)
+# Bring up the entire dev stack (frontend, backend, db) and apply all migrations (IDEMPOTENT)
 .PHONY: dev-up
 dev-up:
-	docker-compose up -d db
+	docker-compose up -d
 	for f in $(sort $(wildcard migrations/*_*.up.sql)); do \
 	  echo "Applying $$f"; \
 	  cat $$f | docker-compose exec -T db psql -U inbox -d inboxwhisperer 2>&1 | grep -v 'already exists' || true; \
 	done
+
+# Bring down all dev containers and remove volumes
+.PHONY: dev-down
+dev-down:
+	docker-compose down -v
 
 # Apply all migrations using psql (RECOMMENDED for local/dev)
 .PHONY: psql-migrate-up

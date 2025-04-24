@@ -7,9 +7,11 @@ info:
     This spec will be expanded as endpoints are implemented.
 servers:
   - url: http://localhost:8080
+
 paths:
-  /auth/login:
+  /api/auth/login:
     get:
+      tags: [Auth]
       summary: Start Google OAuth2 login
       description: Redirects the user to Google's OAuth2 consent screen. Sets up session state for CSRF protection.
       responses:
@@ -21,8 +23,10 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
-  /auth/callback:
+
+  /api/auth/callback:
     get:
+      tags: [Auth]
       summary: OAuth2 callback handler
       description: Handles the Google OAuth2 redirect. Exchanges code for token, creates user if needed, and sets session.
       parameters:
@@ -52,10 +56,11 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
 
-  /api/gmail/fetch:
+  /api/email/messages:
     get:
-      summary: Fetch user's emails from Gmail
-      description: Fetches the latest emails for the authenticated user from Gmail and returns a list of email summaries.
+      tags: [Email]
+      summary: Fetch user's emails
+      description: Fetches the latest emails for the authenticated user and returns a list of email summaries.
       responses:
         '200':
           description: List of email summaries
@@ -71,9 +76,22 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
 
-  /api/gmail/messages/{id}:
+  /api/email/messages/{id}:
     get:
+      tags: [Email]
       summary: Get full email content
       description: Returns the full content of a specific email by ID for the authenticated user.
       parameters:
@@ -101,6 +119,18 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
 
   /healthz:
     get:
@@ -117,18 +147,40 @@ paths:
 
   /users:
     get:
+      tags: [User]
       summary: List users
+      description: Only admin can list users. Non-admins receive 403 Forbidden.
       responses:
         '200':
-          description: List of users
+          description: List of users (admin only)
           content:
             application/json:
               schema:
                 type: array
                 items:
                   $ref: '#/components/schemas/User'
+        '403':
+          description: Forbidden (non-admin)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
     post:
+      tags: [User]
       summary: Create a user
+      description: Only admin can create users. Non-admins receive 403 Forbidden.
       requestBody:
         required: true
         content:
@@ -137,7 +189,7 @@ paths:
               $ref: '#/components/schemas/UserCreateRequest'
       responses:
         '201':
-          description: User created
+          description: User created (admin only)
           content:
             application/json:
               schema:
@@ -148,10 +200,30 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Forbidden (non-admin)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
 
   /users/{id}:
     get:
+      tags: [User]
       summary: Get user by ID
+      description: Only the user themselves (or admin) can get this user. Others receive 403 Forbidden.
       parameters:
         - in: path
           name: id
@@ -165,14 +237,34 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/User'
+        '403':
+          description: Forbidden (not self or admin)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
         '404':
           description: User not found
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
     put:
+      tags: [User]
       summary: Update user
+      description: Only the user themselves (or admin) can update this user. Others receive 403 Forbidden.
       parameters:
         - in: path
           name: id
@@ -198,14 +290,34 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Forbidden (not self or admin)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
         '404':
           description: User not found
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
     delete:
+      tags: [User]
       summary: Delete user
+      description: Only the user themselves (or admin) can delete this user. Others receive 403 Forbidden.
       parameters:
         - in: path
           name: id
@@ -215,8 +327,26 @@ paths:
       responses:
         '204':
           description: User deleted
+        '403':
+          description: Forbidden (not self or admin)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
         '404':
           description: User not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Server error
           content:
             application/json:
               schema:

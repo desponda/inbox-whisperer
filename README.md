@@ -24,29 +24,27 @@ Inbox Whisperer is an AI-powered tool to help users achieve and maintain inbox z
 ├── CHANGELOG.md   # Release notes
 ```
 
-## Getting Started
-### Backend
-1. Install Go (>=1.22)
-2. Copy `.env.example` to `.env` and fill in credentials
-3. Run migrations: `make dev-up` or `make psql-migrate-up` (see Makefile and migrations/README.md)
-4. Start backend: `make run`
+## Quickstart: Full-Stack Dev Environment
 
-- To create a new migration: `make migrate-create`
-- To clean up test output: `make clean`
-- To discover all Makefile targets: `make help`
+1. Copy `config.json.template` to `config.json` and fill in your real credentials (never commit secrets).
+2. Optionally, copy `.env.example` to `.env` and override any environment variables (API URLs, etc).
+3. Start everything (Postgres, backend, frontend, migrations) with:
 
-Note: `migrate.tar.gz` and `test-output.txt` are now ignored and removed from git/history.
+   ```sh
+   make dev-up
+   ```
+   This is idempotent and applies all DB migrations.
 
-### Frontend (React UI)
-1. Scaffold the project in `ui/` (see `features/mvp-ui-react.md` for plan)
-2. Use Makefile targets for dev, lint, test, and build:
-   - `make ui-install` — install dependencies
-   - `make ui-dev` — start dev server
-   - `make ui-lint` — lint code
-   - `make ui-test` — run tests
-   - `make ui-build` — build for production
-   - `make ui-generate-api-client` — generate TypeScript API client from OpenAPI spec
-3. See [`features/mvp-ui-react.md`](features/mvp-ui-react.md) for workflow and progress
+4. To bring everything down and clean up volumes:
+
+   ```sh
+   make dev-down
+   ```
+
+- See the Makefile for all targets and developer scripts.
+- The main React frontend lives in `web/` (not `ui/`).
+- Backend and frontend Dockerfiles are in `cmd/backend/` and `web/` respectively.
+- All config is environment-variable driven for dev/staging/prod flexibility.
 
 ## Documentation
 - Features: [`features.md`](features.md)

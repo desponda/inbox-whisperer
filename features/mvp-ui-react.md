@@ -28,6 +28,7 @@ This document tracks the implementation plan and checklist for the Inbox Whisper
 - [x] Configure Prettier, ESLint (Airbnb config), and TypeScript strict mode.
 - [x] Set up DaisyUI (with Tailwind v4) for consistent, accessible, and modern design.
 - [x] Organize folder structure for scalability: `src/components`, `src/pages`, `src/api`, `src/hooks`, `src/types`.
+- [x] Set up Docker Compose 3-tier workflow (Postgres, backend, frontend) with Makefile `dev-up`/`dev-down` and config.json.template/.env overrides.
 
 ### 2. API Client
 - [x] Ensure OpenAPI spec is up-to-date for all backend endpoints.

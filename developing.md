@@ -11,10 +11,17 @@ Inbox Whisperer is a suite of AI-powered tools designed to help users achieve an
 - **Accent Color:** Use the accent color (`#14e0c9`) for highlights, buttons, and gradients.
 - **No glassmorphism or excessive shadows.**
 
-## Replicating the Installation
-- Ensure `web/public/fonts/dmsans.css` is present and imported in your main layout or each page.
-- Use Tailwind CSS and DaisyUI for UI components and utility classes.
-- See `README.md` for setup and install instructions.
+## Running the Full Stack Locally
+
+- Copy `config.json.template` to `config.json` and fill in real values (never commit secrets).
+- Optionally create a `.env` file (see `.env.example`) to override API URLs, ports, etc for dev/staging/prod.
+- Use the Makefile:
+  - `make dev-up` brings up Postgres, backend, frontend, and applies all DB migrations (idempotent, canonical workflow).
+  - `make dev-down` brings down all containers and cleans up volumes.
+- All configuration is environment-variable driven (see Docker Compose and Makefile for details).
+
+- The frontend is in `web/`, backend in Go, and DB is Postgres. All are orchestrated via Docker Compose.
+- See `README.md` for more details and troubleshooting.
 
 ## MVP Focus (2025-04-22)
 - Users sign up/log in via Google OAuth2
