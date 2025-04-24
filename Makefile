@@ -113,6 +113,9 @@ ui-build:
 # Lint the codebase using golangci-lint (idempotent)
 .PHONY: lint vet staticcheck lint-strict
 lint:
+	@echo 'Checking gofmt...'
+	@gofmt -l . | grep -v '^vendor/' | tee /tmp/gofmt.out
+	@if [ -s /tmp/gofmt.out ]; then echo 'gofmt needs to be run on these files:'; cat /tmp/gofmt.out; exit 1; fi
 	golangci-lint run ./...
 
 # Run go vet static analysis
