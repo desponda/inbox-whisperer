@@ -43,11 +43,31 @@ const AuthCallback: React.FC = () => {
   }, [navigate]);
 
   return (
-    <main className="min-h-screen flex flex-col text-gray-100 bg-[#0e1015]" style={{ fontFamily: "'DM Sans', 'Inter', ui-sans-serif, system-ui, sans-serif" }}>
-      <div aria-hidden className="fixed inset-0 z-0 pointer-events-none" style={{background:'radial-gradient(ellipse 120% 80% at 50% 0%, #23243a 80%, #0e1015 100%), linear-gradient(120deg,rgba(20,224,201,0.07) 0%,rgba(0,180,216,0.07) 100%)',opacity:1}} />
+    <main
+      className="min-h-screen flex flex-col text-gray-100 bg-[#0e1015]"
+      style={{ fontFamily: "'DM Sans', 'Inter', ui-sans-serif, system-ui, sans-serif" }}
+    >
+      <div
+        aria-hidden
+        className="fixed inset-0 z-0 pointer-events-none"
+        style={{
+          background:
+            'radial-gradient(ellipse 120% 80% at 50% 0%, #23243a 80%, #0e1015 100%), linear-gradient(120deg,rgba(20,224,201,0.07) 0%,rgba(0,180,216,0.07) 100%)',
+          opacity: 1,
+        }}
+      />
       <nav className="w-full flex items-center justify-between px-4 py-3 bg-transparent z-10">
         <div className="flex items-center gap-2">
-          <svg width="28" height="28" fill="none" viewBox="0 0 24 24"><rect width="24" height="24" rx="6" fill="#14e0c9"/><path d="M7 12l5 5 5-5" stroke="#23272f" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+          <svg width="28" height="28" fill="none" viewBox="0 0 24 24">
+            <rect width="24" height="24" rx="6" fill="#14e0c9" />
+            <path
+              d="M7 12l5 5 5-5"
+              stroke="#23272f"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          </svg>
           <span className="text-xl font-normal tracking-tight text-white">Inbox Whisperer</span>
         </div>
       </nav>
@@ -63,10 +83,24 @@ const AuthCallback: React.FC = () => {
           {status === 'onboarding' && (
             <>
               <h2 className="text-3xl font-black mb-4 tracking-tight leading-tight">
-                Welcome to <span className="bg-gradient-to-r from-cyan-400 via-blue-400 to-accent bg-clip-text text-transparent" style={{ WebkitTextStroke: '0.5px #14e0c9' }}>Inbox Whisperer</span>!
+                Welcome to{' '}
+                <span
+                  className="bg-gradient-to-r from-cyan-400 via-blue-400 to-accent bg-clip-text text-transparent"
+                  style={{ WebkitTextStroke: '0.5px #14e0c9' }}
+                >
+                  Inbox Whisperer
+                </span>
+                !
               </h2>
-              <p className="text-lg text-gray-300 mb-6">Your account is ready. Let's get started.</p>
-              <button className="btn btn-accent btn-lg font-bold rounded-full px-8 shadow-xl" onClick={() => navigate('/')}>Continue</button>
+              <p className="text-lg text-gray-300 mb-6">
+                Your account is ready. Let's get started.
+              </p>
+              <button
+                className="btn btn-accent btn-lg font-bold rounded-full px-8 shadow-xl"
+                onClick={() => navigate('/')}
+              >
+                Continue
+              </button>
             </>
           )}
           {status === 'success' && (
@@ -79,7 +113,9 @@ const AuthCallback: React.FC = () => {
             <>
               <h2 className="text-2xl font-bold mb-2 text-error">Authentication Error</h2>
               <p className="text-base text-gray-300">{error}</p>
-              <a href="/login" className="btn btn-accent mt-6">Back to Login</a>
+              <a href="/login" className="btn btn-accent mt-6">
+                Back to Login
+              </a>
             </>
           )}
         </div>
@@ -87,7 +123,9 @@ const AuthCallback: React.FC = () => {
       <footer className="footer footer-center p-4 bg-neutral bg-opacity-90 text-gray-400 border-t border-neutral-content/10 shadow-inner z-10">
         <div>
           <p>
-            &copy; {new Date().getFullYear()} Inbox Whisperer &mdash; Built with <span className="text-accent font-semibold">DaisyUI</span> and <span className="text-primary font-semibold">Windsurf</span>
+            &copy; {new Date().getFullYear()} Inbox Whisperer &mdash; Built with{' '}
+            <span className="text-accent font-semibold">DaisyUI</span> and{' '}
+            <span className="text-primary font-semibold">Windsurf</span>
           </p>
         </div>
       </footer>

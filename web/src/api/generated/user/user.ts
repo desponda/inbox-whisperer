@@ -7,242 +7,237 @@
  * OpenAPI spec version: 0.1.0
  */
 import * as axios from 'axios';
-import type {
-  AxiosError,
-  AxiosRequestConfig,
-  AxiosResponse
-} from 'axios';
+import type { AxiosError, AxiosRequestConfig, AxiosResponse } from 'axios';
 
 import useSwr from 'swr';
-import type {
-  Arguments,
-  Key,
-  SWRConfiguration
-} from 'swr';
+import type { Arguments, Key, SWRConfiguration } from 'swr';
 
 import useSWRMutation from 'swr/mutation';
-import type {
-  SWRMutationConfiguration
-} from 'swr/mutation';
+import type { SWRMutationConfiguration } from 'swr/mutation';
 
-import type {
-  ErrorResponse,
-  User,
-  UserCreateRequest,
-  UserUpdateRequest
-} from '../model.ts';
+import type { ErrorResponse, User, UserCreateRequest, UserUpdateRequest } from '../model.ts';
 
-
-
-  
-  
-  
 /**
  * Only admin can list users. Non-admins receive 403 Forbidden.
  * @summary List users
  */
-export const getUsers = (
-     options?: AxiosRequestConfig
- ): Promise<AxiosResponse<User[]>> => {
-    return axios.default.get(
-      `/users`,options
-    );
-  }
-
-
+export const getUsers = (options?: AxiosRequestConfig): Promise<AxiosResponse<User[]>> => {
+  return axios.default.get(`/users`, options);
+};
 
 export const getGetUsersKey = () => [`/users`] as const;
 
-export type GetUsersQueryResult = NonNullable<Awaited<ReturnType<typeof getUsers>>>
-export type GetUsersQueryError = AxiosError<ErrorResponse>
+export type GetUsersQueryResult = NonNullable<Awaited<ReturnType<typeof getUsers>>>;
+export type GetUsersQueryError = AxiosError<ErrorResponse>;
 
 /**
  * @summary List users
  */
-export const useGetUsers = <TError = AxiosError<ErrorResponse>>(
-   options?: { swr?:SWRConfiguration<Awaited<ReturnType<typeof getUsers>>, TError> & { swrKey?: Key, enabled?: boolean }, axios?: AxiosRequestConfig }
-) => {
-  const {swr: swrOptions, axios: axiosOptions} = options ?? {}
+export const useGetUsers = <TError = AxiosError<ErrorResponse>>(options?: {
+  swr?: SWRConfiguration<Awaited<ReturnType<typeof getUsers>>, TError> & {
+    swrKey?: Key;
+    enabled?: boolean;
+  };
+  axios?: AxiosRequestConfig;
+}) => {
+  const { swr: swrOptions, axios: axiosOptions } = options ?? {};
 
-  const isEnabled = swrOptions?.enabled !== false
-  const swrKey = swrOptions?.swrKey ?? (() => isEnabled ? getGetUsersKey() : null);
-  const swrFn = () => getUsers(axiosOptions)
+  const isEnabled = swrOptions?.enabled !== false;
+  const swrKey = swrOptions?.swrKey ?? (() => (isEnabled ? getGetUsersKey() : null));
+  const swrFn = () => getUsers(axiosOptions);
 
-  const query = useSwr<Awaited<ReturnType<typeof swrFn>>, TError>(swrKey, swrFn, swrOptions)
+  const query = useSwr<Awaited<ReturnType<typeof swrFn>>, TError>(swrKey, swrFn, swrOptions);
 
   return {
     swrKey,
-    ...query
-  }
-}
+    ...query,
+  };
+};
 /**
  * Only admin can create users. Non-admins receive 403 Forbidden.
  * @summary Create a user
  */
 export const postUsers = (
-    userCreateRequest: UserCreateRequest, options?: AxiosRequestConfig
- ): Promise<AxiosResponse<User>> => {
-    return axios.default.post(
-      `/users`,
-      userCreateRequest,options
-    );
-  }
+  userCreateRequest: UserCreateRequest,
+  options?: AxiosRequestConfig,
+): Promise<AxiosResponse<User>> => {
+  return axios.default.post(`/users`, userCreateRequest, options);
+};
 
-
-
-export const getPostUsersMutationFetcher = ( options?: AxiosRequestConfig) => {
+export const getPostUsersMutationFetcher = (options?: AxiosRequestConfig) => {
   return (_: Key, { arg }: { arg: UserCreateRequest }): Promise<AxiosResponse<User>> => {
     return postUsers(arg, options);
-  }
-}
+  };
+};
 export const getPostUsersMutationKey = () => [`/users`] as const;
 
-export type PostUsersMutationResult = NonNullable<Awaited<ReturnType<typeof postUsers>>>
-export type PostUsersMutationError = AxiosError<ErrorResponse>
+export type PostUsersMutationResult = NonNullable<Awaited<ReturnType<typeof postUsers>>>;
+export type PostUsersMutationError = AxiosError<ErrorResponse>;
 
 /**
  * @summary Create a user
  */
-export const usePostUsers = <TError = AxiosError<ErrorResponse>>(
-   options?: { swr?:SWRMutationConfiguration<Awaited<ReturnType<typeof postUsers>>, TError, Key, UserCreateRequest, Awaited<ReturnType<typeof postUsers>>> & { swrKey?: string }, axios?: AxiosRequestConfig}
-) => {
-
-  const {swr: swrOptions, axios: axiosOptions} = options ?? {}
+export const usePostUsers = <TError = AxiosError<ErrorResponse>>(options?: {
+  swr?: SWRMutationConfiguration<
+    Awaited<ReturnType<typeof postUsers>>,
+    TError,
+    Key,
+    UserCreateRequest,
+    Awaited<ReturnType<typeof postUsers>>
+  > & { swrKey?: string };
+  axios?: AxiosRequestConfig;
+}) => {
+  const { swr: swrOptions, axios: axiosOptions } = options ?? {};
 
   const swrKey = swrOptions?.swrKey ?? getPostUsersMutationKey();
   const swrFn = getPostUsersMutationFetcher(axiosOptions);
 
-  const query = useSWRMutation(swrKey, swrFn, swrOptions)
+  const query = useSWRMutation(swrKey, swrFn, swrOptions);
 
   return {
     swrKey,
-    ...query
-  }
-}
+    ...query,
+  };
+};
 /**
  * Only the user themselves (or admin) can get this user. Others receive 403 Forbidden.
  * @summary Get user by ID
  */
 export const getUsersId = (
-    id: string, options?: AxiosRequestConfig
- ): Promise<AxiosResponse<User>> => {
-    return axios.default.get(
-      `/users/${id}`,options
-    );
-  }
+  id: string,
+  options?: AxiosRequestConfig,
+): Promise<AxiosResponse<User>> => {
+  return axios.default.get(`/users/${id}`, options);
+};
 
+export const getGetUsersIdKey = (id: string) => [`/users/${id}`] as const;
 
-
-export const getGetUsersIdKey = (id: string,) => [`/users/${id}`] as const;
-
-export type GetUsersIdQueryResult = NonNullable<Awaited<ReturnType<typeof getUsersId>>>
-export type GetUsersIdQueryError = AxiosError<ErrorResponse>
+export type GetUsersIdQueryResult = NonNullable<Awaited<ReturnType<typeof getUsersId>>>;
+export type GetUsersIdQueryError = AxiosError<ErrorResponse>;
 
 /**
  * @summary Get user by ID
  */
 export const useGetUsersId = <TError = AxiosError<ErrorResponse>>(
-  id: string, options?: { swr?:SWRConfiguration<Awaited<ReturnType<typeof getUsersId>>, TError> & { swrKey?: Key, enabled?: boolean }, axios?: AxiosRequestConfig }
+  id: string,
+  options?: {
+    swr?: SWRConfiguration<Awaited<ReturnType<typeof getUsersId>>, TError> & {
+      swrKey?: Key;
+      enabled?: boolean;
+    };
+    axios?: AxiosRequestConfig;
+  },
 ) => {
-  const {swr: swrOptions, axios: axiosOptions} = options ?? {}
+  const { swr: swrOptions, axios: axiosOptions } = options ?? {};
 
-  const isEnabled = swrOptions?.enabled !== false && !!(id)
-  const swrKey = swrOptions?.swrKey ?? (() => isEnabled ? getGetUsersIdKey(id) : null);
-  const swrFn = () => getUsersId(id, axiosOptions)
+  const isEnabled = swrOptions?.enabled !== false && !!id;
+  const swrKey = swrOptions?.swrKey ?? (() => (isEnabled ? getGetUsersIdKey(id) : null));
+  const swrFn = () => getUsersId(id, axiosOptions);
 
-  const query = useSwr<Awaited<ReturnType<typeof swrFn>>, TError>(swrKey, swrFn, swrOptions)
+  const query = useSwr<Awaited<ReturnType<typeof swrFn>>, TError>(swrKey, swrFn, swrOptions);
 
   return {
     swrKey,
-    ...query
-  }
-}
+    ...query,
+  };
+};
 /**
  * Only the user themselves (or admin) can update this user. Others receive 403 Forbidden.
  * @summary Update user
  */
 export const putUsersId = (
-    id: string,
-    userUpdateRequest: UserUpdateRequest, options?: AxiosRequestConfig
- ): Promise<AxiosResponse<User>> => {
-    return axios.default.put(
-      `/users/${id}`,
-      userUpdateRequest,options
-    );
-  }
-
-
+  id: string,
+  userUpdateRequest: UserUpdateRequest,
+  options?: AxiosRequestConfig,
+): Promise<AxiosResponse<User>> => {
+  return axios.default.put(`/users/${id}`, userUpdateRequest, options);
+};
 
 export const getPutUsersIdMutationFetcher = (id: string, options?: AxiosRequestConfig) => {
   return (_: Key, { arg }: { arg: UserUpdateRequest }): Promise<AxiosResponse<User>> => {
     return putUsersId(id, arg, options);
-  }
-}
-export const getPutUsersIdMutationKey = (id: string,) => [`/users/${id}`] as const;
+  };
+};
+export const getPutUsersIdMutationKey = (id: string) => [`/users/${id}`] as const;
 
-export type PutUsersIdMutationResult = NonNullable<Awaited<ReturnType<typeof putUsersId>>>
-export type PutUsersIdMutationError = AxiosError<ErrorResponse>
+export type PutUsersIdMutationResult = NonNullable<Awaited<ReturnType<typeof putUsersId>>>;
+export type PutUsersIdMutationError = AxiosError<ErrorResponse>;
 
 /**
  * @summary Update user
  */
 export const usePutUsersId = <TError = AxiosError<ErrorResponse>>(
-  id: string, options?: { swr?:SWRMutationConfiguration<Awaited<ReturnType<typeof putUsersId>>, TError, Key, UserUpdateRequest, Awaited<ReturnType<typeof putUsersId>>> & { swrKey?: string }, axios?: AxiosRequestConfig}
+  id: string,
+  options?: {
+    swr?: SWRMutationConfiguration<
+      Awaited<ReturnType<typeof putUsersId>>,
+      TError,
+      Key,
+      UserUpdateRequest,
+      Awaited<ReturnType<typeof putUsersId>>
+    > & { swrKey?: string };
+    axios?: AxiosRequestConfig;
+  },
 ) => {
-
-  const {swr: swrOptions, axios: axiosOptions} = options ?? {}
+  const { swr: swrOptions, axios: axiosOptions } = options ?? {};
 
   const swrKey = swrOptions?.swrKey ?? getPutUsersIdMutationKey(id);
   const swrFn = getPutUsersIdMutationFetcher(id, axiosOptions);
 
-  const query = useSWRMutation(swrKey, swrFn, swrOptions)
+  const query = useSWRMutation(swrKey, swrFn, swrOptions);
 
   return {
     swrKey,
-    ...query
-  }
-}
+    ...query,
+  };
+};
 /**
  * Only the user themselves (or admin) can delete this user. Others receive 403 Forbidden.
  * @summary Delete user
  */
 export const deleteUsersId = (
-    id: string, options?: AxiosRequestConfig
- ): Promise<AxiosResponse<void>> => {
-    return axios.default.delete(
-      `/users/${id}`,options
-    );
-  }
-
-
+  id: string,
+  options?: AxiosRequestConfig,
+): Promise<AxiosResponse<void>> => {
+  return axios.default.delete(`/users/${id}`, options);
+};
 
 export const getDeleteUsersIdMutationFetcher = (id: string, options?: AxiosRequestConfig) => {
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   return (_: Key, __: { arg: Arguments }): Promise<AxiosResponse<void>> => {
     return deleteUsersId(id, options);
-  }
-}
-export const getDeleteUsersIdMutationKey = (id: string,) => [`/users/${id}`] as const;
+  };
+};
+export const getDeleteUsersIdMutationKey = (id: string) => [`/users/${id}`] as const;
 
-export type DeleteUsersIdMutationResult = NonNullable<Awaited<ReturnType<typeof deleteUsersId>>>
-export type DeleteUsersIdMutationError = AxiosError<ErrorResponse>
+export type DeleteUsersIdMutationResult = NonNullable<Awaited<ReturnType<typeof deleteUsersId>>>;
+export type DeleteUsersIdMutationError = AxiosError<ErrorResponse>;
 
 /**
  * @summary Delete user
  */
 export const useDeleteUsersId = <TError = AxiosError<ErrorResponse>>(
-  id: string, options?: { swr?:SWRMutationConfiguration<Awaited<ReturnType<typeof deleteUsersId>>, TError, Key, Arguments, Awaited<ReturnType<typeof deleteUsersId>>> & { swrKey?: string }, axios?: AxiosRequestConfig}
+  id: string,
+  options?: {
+    swr?: SWRMutationConfiguration<
+      Awaited<ReturnType<typeof deleteUsersId>>,
+      TError,
+      Key,
+      Arguments,
+      Awaited<ReturnType<typeof deleteUsersId>>
+    > & { swrKey?: string };
+    axios?: AxiosRequestConfig;
+  },
 ) => {
-
-  const {swr: swrOptions, axios: axiosOptions} = options ?? {}
+  const { swr: swrOptions, axios: axiosOptions } = options ?? {};
 
   const swrKey = swrOptions?.swrKey ?? getDeleteUsersIdMutationKey(id);
   const swrFn = getDeleteUsersIdMutationFetcher(id, axiosOptions);
 
-  const query = useSWRMutation(swrKey, swrFn, swrOptions)
+  const query = useSWRMutation(swrKey, swrFn, swrOptions);
 
   return {
     swrKey,
-    ...query
-  }
-}
+    ...query,
+  };
+};

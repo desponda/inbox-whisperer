@@ -7,58 +7,44 @@
  * OpenAPI spec version: 0.1.0
  */
 import * as axios from 'axios';
-import type {
-  AxiosError,
-  AxiosRequestConfig,
-  AxiosResponse
-} from 'axios';
+import type { AxiosError, AxiosRequestConfig, AxiosResponse } from 'axios';
 
 import useSwr from 'swr';
-import type {
-  Key,
-  SWRConfiguration
-} from 'swr';
+import type { Key, SWRConfiguration } from 'swr';
 
-
-
-  
-  
-  
 /**
  * Returns 200 OK if the server is running
  * @summary Health check
  */
-export const getHealthz = (
-     options?: AxiosRequestConfig
- ): Promise<AxiosResponse<string>> => {
-    return axios.default.get(
-      `/healthz`,options
-    );
-  }
-
-
+export const getHealthz = (options?: AxiosRequestConfig): Promise<AxiosResponse<string>> => {
+  return axios.default.get(`/healthz`, options);
+};
 
 export const getGetHealthzKey = () => [`/healthz`] as const;
 
-export type GetHealthzQueryResult = NonNullable<Awaited<ReturnType<typeof getHealthz>>>
-export type GetHealthzQueryError = AxiosError<unknown>
+export type GetHealthzQueryResult = NonNullable<Awaited<ReturnType<typeof getHealthz>>>;
+export type GetHealthzQueryError = AxiosError<unknown>;
 
 /**
  * @summary Health check
  */
-export const useGetHealthz = <TError = AxiosError<unknown>>(
-   options?: { swr?:SWRConfiguration<Awaited<ReturnType<typeof getHealthz>>, TError> & { swrKey?: Key, enabled?: boolean }, axios?: AxiosRequestConfig }
-) => {
-  const {swr: swrOptions, axios: axiosOptions} = options ?? {}
+export const useGetHealthz = <TError = AxiosError<unknown>>(options?: {
+  swr?: SWRConfiguration<Awaited<ReturnType<typeof getHealthz>>, TError> & {
+    swrKey?: Key;
+    enabled?: boolean;
+  };
+  axios?: AxiosRequestConfig;
+}) => {
+  const { swr: swrOptions, axios: axiosOptions } = options ?? {};
 
-  const isEnabled = swrOptions?.enabled !== false
-  const swrKey = swrOptions?.swrKey ?? (() => isEnabled ? getGetHealthzKey() : null);
-  const swrFn = () => getHealthz(axiosOptions)
+  const isEnabled = swrOptions?.enabled !== false;
+  const swrKey = swrOptions?.swrKey ?? (() => (isEnabled ? getGetHealthzKey() : null));
+  const swrFn = () => getHealthz(axiosOptions);
 
-  const query = useSwr<Awaited<ReturnType<typeof swrFn>>, TError>(swrKey, swrFn, swrOptions)
+  const query = useSwr<Awaited<ReturnType<typeof swrFn>>, TError>(swrKey, swrFn, swrOptions);
 
   return {
     swrKey,
-    ...query
-  }
-}
+    ...query,
+  };
+};

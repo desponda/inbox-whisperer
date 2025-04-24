@@ -6,10 +6,10 @@ module.exports = {
       target: './src/api/generated/',
       schemas: './src/api/generated/model.ts',
       client: 'swr',
-      mock: false
+      mock: false,
     },
     hooks: {
-      afterAllFilesWrite: 'prettier --write ./src/api/generated/**/*.{ts,js}'
-    }
-  }
+      afterAllFilesWrite: 'prettier --write ./src/api/generated/**/*.{ts,js}',
+    },
+  },
 };

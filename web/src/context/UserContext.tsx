@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 import { components } from '../api/types';
 
-export type User = components["schemas"]["User"] | null;
+export type User = components['schemas']['User'] | null;
 
 interface UserContextValue {
   user: User;

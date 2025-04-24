@@ -7,103 +7,95 @@
  * OpenAPI spec version: 0.1.0
  */
 import * as axios from 'axios';
-import type {
-  AxiosError,
-  AxiosRequestConfig,
-  AxiosResponse
-} from 'axios';
+import type { AxiosError, AxiosRequestConfig, AxiosResponse } from 'axios';
 
 import useSwr from 'swr';
-import type {
-  Key,
-  SWRConfiguration
-} from 'swr';
+import type { Key, SWRConfiguration } from 'swr';
 
-import type {
-  ErrorResponse,
-  GetApiAuthCallbackParams
-} from '.././';
+import type { ErrorResponse, GetApiAuthCallbackParams } from '.././';
 
-
-
-  
-  
-  
 /**
  * Redirects the user to Google's OAuth2 consent screen. Sets up session state for CSRF protection.
  * @summary Start Google OAuth2 login
  */
-export const getApiAuthLogin = (
-     options?: AxiosRequestConfig
- ): Promise<AxiosResponse<unknown>> => {
-    return axios.default.get(
-      `/api/auth/login`,options
-    );
-  }
-
-
+export const getApiAuthLogin = (options?: AxiosRequestConfig): Promise<AxiosResponse<unknown>> => {
+  return axios.default.get(`/api/auth/login`, options);
+};
 
 export const getGetApiAuthLoginKey = () => [`/api/auth/login`] as const;
 
-export type GetApiAuthLoginQueryResult = NonNullable<Awaited<ReturnType<typeof getApiAuthLogin>>>
-export type GetApiAuthLoginQueryError = AxiosError<void | ErrorResponse>
+export type GetApiAuthLoginQueryResult = NonNullable<Awaited<ReturnType<typeof getApiAuthLogin>>>;
+export type GetApiAuthLoginQueryError = AxiosError<void | ErrorResponse>;
 
 /**
  * @summary Start Google OAuth2 login
  */
-export const useGetApiAuthLogin = <TError = AxiosError<void | ErrorResponse>>(
-   options?: { swr?:SWRConfiguration<Awaited<ReturnType<typeof getApiAuthLogin>>, TError> & { swrKey?: Key, enabled?: boolean }, axios?: AxiosRequestConfig }
-) => {
-  const {swr: swrOptions, axios: axiosOptions} = options ?? {}
+export const useGetApiAuthLogin = <TError = AxiosError<void | ErrorResponse>>(options?: {
+  swr?: SWRConfiguration<Awaited<ReturnType<typeof getApiAuthLogin>>, TError> & {
+    swrKey?: Key;
+    enabled?: boolean;
+  };
+  axios?: AxiosRequestConfig;
+}) => {
+  const { swr: swrOptions, axios: axiosOptions } = options ?? {};
 
-  const isEnabled = swrOptions?.enabled !== false
-  const swrKey = swrOptions?.swrKey ?? (() => isEnabled ? getGetApiAuthLoginKey() : null);
-  const swrFn = () => getApiAuthLogin(axiosOptions)
+  const isEnabled = swrOptions?.enabled !== false;
+  const swrKey = swrOptions?.swrKey ?? (() => (isEnabled ? getGetApiAuthLoginKey() : null));
+  const swrFn = () => getApiAuthLogin(axiosOptions);
 
-  const query = useSwr<Awaited<ReturnType<typeof swrFn>>, TError>(swrKey, swrFn, swrOptions)
+  const query = useSwr<Awaited<ReturnType<typeof swrFn>>, TError>(swrKey, swrFn, swrOptions);
 
   return {
     swrKey,
-    ...query
-  }
-}
+    ...query,
+  };
+};
 /**
  * Handles the Google OAuth2 redirect. Exchanges code for token, creates user if needed, and sets session.
  * @summary OAuth2 callback handler
  */
 export const getApiAuthCallback = (
-    params: GetApiAuthCallbackParams, options?: AxiosRequestConfig
- ): Promise<AxiosResponse<unknown>> => {
-    return axios.default.get(
-      `/api/auth/callback`,{
+  params: GetApiAuthCallbackParams,
+  options?: AxiosRequestConfig,
+): Promise<AxiosResponse<unknown>> => {
+  return axios.default.get(`/api/auth/callback`, {
     ...options,
-        params: {...params, ...options?.params},}
-    );
-  }
+    params: { ...params, ...options?.params },
+  });
+};
 
+export const getGetApiAuthCallbackKey = (params: GetApiAuthCallbackParams) =>
+  [`/api/auth/callback`, ...(params ? [params] : [])] as const;
 
-
-export const getGetApiAuthCallbackKey = (params: GetApiAuthCallbackParams,) => [`/api/auth/callback`, ...(params ? [params]: [])] as const;
-
-export type GetApiAuthCallbackQueryResult = NonNullable<Awaited<ReturnType<typeof getApiAuthCallback>>>
-export type GetApiAuthCallbackQueryError = AxiosError<void | ErrorResponse>
+export type GetApiAuthCallbackQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getApiAuthCallback>>
+>;
+export type GetApiAuthCallbackQueryError = AxiosError<void | ErrorResponse>;
 
 /**
  * @summary OAuth2 callback handler
  */
 export const useGetApiAuthCallback = <TError = AxiosError<void | ErrorResponse>>(
-  params: GetApiAuthCallbackParams, options?: { swr?:SWRConfiguration<Awaited<ReturnType<typeof getApiAuthCallback>>, TError> & { swrKey?: Key, enabled?: boolean }, axios?: AxiosRequestConfig }
+  params: GetApiAuthCallbackParams,
+  options?: {
+    swr?: SWRConfiguration<Awaited<ReturnType<typeof getApiAuthCallback>>, TError> & {
+      swrKey?: Key;
+      enabled?: boolean;
+    };
+    axios?: AxiosRequestConfig;
+  },
 ) => {
-  const {swr: swrOptions, axios: axiosOptions} = options ?? {}
+  const { swr: swrOptions, axios: axiosOptions } = options ?? {};
 
-  const isEnabled = swrOptions?.enabled !== false
-  const swrKey = swrOptions?.swrKey ?? (() => isEnabled ? getGetApiAuthCallbackKey(params) : null);
-  const swrFn = () => getApiAuthCallback(params, axiosOptions)
+  const isEnabled = swrOptions?.enabled !== false;
+  const swrKey =
+    swrOptions?.swrKey ?? (() => (isEnabled ? getGetApiAuthCallbackKey(params) : null));
+  const swrFn = () => getApiAuthCallback(params, axiosOptions);
 
-  const query = useSwr<Awaited<ReturnType<typeof swrFn>>, TError>(swrKey, swrFn, swrOptions)
+  const query = useSwr<Awaited<ReturnType<typeof swrFn>>, TError>(swrKey, swrFn, swrOptions);
 
   return {
     swrKey,
-    ...query
-  }
-}
+    ...query,
+  };
+};

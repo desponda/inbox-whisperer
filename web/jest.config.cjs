@@ -11,7 +11,5 @@ module.exports = {
     '^.+\.css$': 'identity-obj-proxy',
     '^.+\.(less|scss|sass)$': 'identity-obj-proxy',
   },
-  testMatch: [
-    '<rootDir>/src/**/*.(spec|test).(ts|tsx|js)'
-  ],
+  testMatch: ['<rootDir>/src/**/*.(spec|test).(ts|tsx|js)'],
 };

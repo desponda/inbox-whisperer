@@ -11,7 +11,8 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "fmt": "prettier --check ."
   },
   "dependencies": {
     "@types/react-router-dom": "^5.3.3",

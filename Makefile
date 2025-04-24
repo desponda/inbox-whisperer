@@ -110,6 +110,9 @@ ui-test:
 ui-build:
 	npm run build --prefix web
 
+ui-fmt:
+	npm run fmt --prefix web
+
 # Lint the codebase using golangci-lint (idempotent)
 .PHONY: lint vet staticcheck lint-strict
 lint:

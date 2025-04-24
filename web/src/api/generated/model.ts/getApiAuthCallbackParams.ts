@@ -8,6 +8,6 @@
  */
 
 export type GetApiAuthCallbackParams = {
-code: string;
-state: string;
+  code: string;
+  state: string;
 };

@@ -10,7 +10,7 @@ describe('Home', () => {
     render(
       <UserProvider>
         <Home />
-      </UserProvider>
+      </UserProvider>,
     );
     expect(screen.getAllByText(/Inbox Whisperer/i).length).toBeGreaterThan(0);
   });
@@ -19,7 +19,7 @@ describe('Home', () => {
     render(
       <UserProvider>
         <Home />
-      </UserProvider>
+      </UserProvider>,
     );
     expect(screen.getAllByText(/Sign in/i)[0]).toBeInTheDocument();
   });

@@ -3,7 +3,7 @@ import { paths } from './types';
 
 // --- Basic fetcher for SWR ---
 const fetcher = (url: string) =>
-  fetch(url, { credentials: 'include' }).then(res => {
+  fetch(url, { credentials: 'include' }).then((res) => {
     if (!res.ok) throw new Error('API error');
     return res.json();
   });
@@ -12,10 +12,7 @@ const fetcher = (url: string) =>
 
 // Get current user info (assumes /api/users/me returns User)
 export function useCurrentUser() {
-  return useSWR<paths['/users/{id}']['get']['responses']['200']>(
-    '/api/users/me',
-    fetcher
-  );
+  return useSWR<paths['/users/{id}']['get']['responses']['200']>('/api/users/me', fetcher);
 }
 
 // Add more hooks as needed, e.g. for onboarding, emails, etc.

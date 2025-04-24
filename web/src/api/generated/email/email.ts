@@ -7,102 +7,94 @@
  * OpenAPI spec version: 0.1.0
  */
 import * as axios from 'axios';
-import type {
-  AxiosError,
-  AxiosRequestConfig,
-  AxiosResponse
-} from 'axios';
+import type { AxiosError, AxiosRequestConfig, AxiosResponse } from 'axios';
 
 import useSwr from 'swr';
-import type {
-  Key,
-  SWRConfiguration
-} from 'swr';
+import type { Key, SWRConfiguration } from 'swr';
 
-import type {
-  EmailContent,
-  EmailSummary,
-  ErrorResponse
-} from '.././';
+import type { EmailContent, EmailSummary, ErrorResponse } from '.././';
 
-
-
-  
-  
-  
 /**
  * Fetches the latest emails for the authenticated user and returns a list of email summaries.
  * @summary Fetch user's emails
  */
 export const getApiEmailMessages = (
-     options?: AxiosRequestConfig
- ): Promise<AxiosResponse<EmailSummary[]>> => {
-    return axios.default.get(
-      `/api/email/messages`,options
-    );
-  }
-
-
+  options?: AxiosRequestConfig,
+): Promise<AxiosResponse<EmailSummary[]>> => {
+  return axios.default.get(`/api/email/messages`, options);
+};
 
 export const getGetApiEmailMessagesKey = () => [`/api/email/messages`] as const;
 
-export type GetApiEmailMessagesQueryResult = NonNullable<Awaited<ReturnType<typeof getApiEmailMessages>>>
-export type GetApiEmailMessagesQueryError = AxiosError<ErrorResponse>
+export type GetApiEmailMessagesQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getApiEmailMessages>>
+>;
+export type GetApiEmailMessagesQueryError = AxiosError<ErrorResponse>;
 
 /**
  * @summary Fetch user's emails
  */
-export const useGetApiEmailMessages = <TError = AxiosError<ErrorResponse>>(
-   options?: { swr?:SWRConfiguration<Awaited<ReturnType<typeof getApiEmailMessages>>, TError> & { swrKey?: Key, enabled?: boolean }, axios?: AxiosRequestConfig }
-) => {
-  const {swr: swrOptions, axios: axiosOptions} = options ?? {}
+export const useGetApiEmailMessages = <TError = AxiosError<ErrorResponse>>(options?: {
+  swr?: SWRConfiguration<Awaited<ReturnType<typeof getApiEmailMessages>>, TError> & {
+    swrKey?: Key;
+    enabled?: boolean;
+  };
+  axios?: AxiosRequestConfig;
+}) => {
+  const { swr: swrOptions, axios: axiosOptions } = options ?? {};
 
-  const isEnabled = swrOptions?.enabled !== false
-  const swrKey = swrOptions?.swrKey ?? (() => isEnabled ? getGetApiEmailMessagesKey() : null);
-  const swrFn = () => getApiEmailMessages(axiosOptions)
+  const isEnabled = swrOptions?.enabled !== false;
+  const swrKey = swrOptions?.swrKey ?? (() => (isEnabled ? getGetApiEmailMessagesKey() : null));
+  const swrFn = () => getApiEmailMessages(axiosOptions);
 
-  const query = useSwr<Awaited<ReturnType<typeof swrFn>>, TError>(swrKey, swrFn, swrOptions)
+  const query = useSwr<Awaited<ReturnType<typeof swrFn>>, TError>(swrKey, swrFn, swrOptions);
 
   return {
     swrKey,
-    ...query
-  }
-}
+    ...query,
+  };
+};
 /**
  * Returns the full content of a specific email by ID for the authenticated user.
  * @summary Get full email content
  */
 export const getApiEmailMessagesId = (
-    id: string, options?: AxiosRequestConfig
- ): Promise<AxiosResponse<EmailContent>> => {
-    return axios.default.get(
-      `/api/email/messages/${id}`,options
-    );
-  }
+  id: string,
+  options?: AxiosRequestConfig,
+): Promise<AxiosResponse<EmailContent>> => {
+  return axios.default.get(`/api/email/messages/${id}`, options);
+};
 
+export const getGetApiEmailMessagesIdKey = (id: string) => [`/api/email/messages/${id}`] as const;
 
-
-export const getGetApiEmailMessagesIdKey = (id: string,) => [`/api/email/messages/${id}`] as const;
-
-export type GetApiEmailMessagesIdQueryResult = NonNullable<Awaited<ReturnType<typeof getApiEmailMessagesId>>>
-export type GetApiEmailMessagesIdQueryError = AxiosError<ErrorResponse>
+export type GetApiEmailMessagesIdQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getApiEmailMessagesId>>
+>;
+export type GetApiEmailMessagesIdQueryError = AxiosError<ErrorResponse>;
 
 /**
  * @summary Get full email content
  */
 export const useGetApiEmailMessagesId = <TError = AxiosError<ErrorResponse>>(
-  id: string, options?: { swr?:SWRConfiguration<Awaited<ReturnType<typeof getApiEmailMessagesId>>, TError> & { swrKey?: Key, enabled?: boolean }, axios?: AxiosRequestConfig }
+  id: string,
+  options?: {
+    swr?: SWRConfiguration<Awaited<ReturnType<typeof getApiEmailMessagesId>>, TError> & {
+      swrKey?: Key;
+      enabled?: boolean;
+    };
+    axios?: AxiosRequestConfig;
+  },
 ) => {
-  const {swr: swrOptions, axios: axiosOptions} = options ?? {}
+  const { swr: swrOptions, axios: axiosOptions } = options ?? {};
 
-  const isEnabled = swrOptions?.enabled !== false && !!(id)
-  const swrKey = swrOptions?.swrKey ?? (() => isEnabled ? getGetApiEmailMessagesIdKey(id) : null);
-  const swrFn = () => getApiEmailMessagesId(id, axiosOptions)
+  const isEnabled = swrOptions?.enabled !== false && !!id;
+  const swrKey = swrOptions?.swrKey ?? (() => (isEnabled ? getGetApiEmailMessagesIdKey(id) : null));
+  const swrFn = () => getApiEmailMessagesId(id, axiosOptions);
 
-  const query = useSwr<Awaited<ReturnType<typeof swrFn>>, TError>(swrKey, swrFn, swrOptions)
+  const query = useSwr<Awaited<ReturnType<typeof swrFn>>, TError>(swrKey, swrFn, swrOptions);
 
   return {
     swrKey,
-    ...query
-  }
-}
+    ...query,
+  };
+};
