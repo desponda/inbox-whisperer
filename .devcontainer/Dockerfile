@@ -45,27 +45,3 @@ ENV CGO_ENABLED=1 \
     GOOS=linux \
     PATH=$PATH:/go/bin \
     NODE_ENV=development
-
-# Create a non-root user for development
-ARG USERNAME=vscode
-ARG USER_UID=1000
-ARG USER_GID=$USER_UID
-
-RUN groupadd --gid $USER_GID $USERNAME && \
-    useradd --uid $USER_UID --gid $USER_GID -m $USERNAME
-
-# Set working directory and permissions
-WORKDIR /workspace
-RUN chown -R $USERNAME:$USERNAME /workspace
-
-# Install common dev tools
-RUN apt-get install -y git sudo
-
-# Clean up
-RUN apt-get clean && rm -rf /var/lib/apt/lists/*
-
-# Reset DEBIAN_FRONTEND
-ENV DEBIAN_FRONTEND=dialog
-
-# Set default shell
-SHELL ["/bin/bash", "-c"]
