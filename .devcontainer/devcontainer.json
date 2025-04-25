@@ -3,8 +3,7 @@
   "dockerFile": "Dockerfile",
   "context": "..",
   "mounts": [
-    "source=/var/run/docker.sock,target=/var/run/docker.sock,type=bind",
-    "source=${localWorkspaceFolder}/shared,target=/workspace/shared,type=bind,consistency=cached"
+    "source=/var/run/docker.sock,target=/var/run/docker.sock,type=bind"
   ],
   "remoteEnv": {
     "DOCKER_BUILDKIT": "1",
