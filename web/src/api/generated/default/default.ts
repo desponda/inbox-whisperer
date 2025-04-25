@@ -6,7 +6,7 @@
 
  * OpenAPI spec version: 0.1.0
  */
-import * as axios from 'axios';
+import axios from 'axios';
 import type { AxiosError, AxiosRequestConfig, AxiosResponse } from 'axios';
 
 import useSwr from 'swr';
@@ -17,7 +17,7 @@ import type { Key, SWRConfiguration } from 'swr';
  * @summary Health check
  */
 export const getHealthz = (options?: AxiosRequestConfig): Promise<AxiosResponse<string>> => {
-  return axios.default.get(`/healthz`, options);
+  return axios.get(`/healthz`, options);
 };
 
 export const getGetHealthzKey = () => [`/healthz`] as const;

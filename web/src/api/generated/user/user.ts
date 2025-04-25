@@ -6,7 +6,7 @@
 
  * OpenAPI spec version: 0.1.0
  */
-import * as axios from 'axios';
+import axios from 'axios';
 import type { AxiosError, AxiosRequestConfig, AxiosResponse } from 'axios';
 
 import useSwr from 'swr';
@@ -15,14 +15,19 @@ import type { Arguments, Key, SWRConfiguration } from 'swr';
 import useSWRMutation from 'swr/mutation';
 import type { SWRMutationConfiguration } from 'swr/mutation';
 
-import type { ErrorResponse, User, UserCreateRequest, UserUpdateRequest } from '../model.ts';
+import type {
+  ErrorResponse,
+  User,
+  UserCreateRequest,
+  UserUpdateRequest,
+} from '../inboxWhispererAPI.schemas';
 
 /**
  * Only admin can list users. Non-admins receive 403 Forbidden.
  * @summary List users
  */
 export const getUsers = (options?: AxiosRequestConfig): Promise<AxiosResponse<User[]>> => {
-  return axios.default.get(`/users`, options);
+  return axios.get(`/users`, options);
 };
 
 export const getGetUsersKey = () => [`/users`] as const;
@@ -61,7 +66,7 @@ export const postUsers = (
   userCreateRequest: UserCreateRequest,
   options?: AxiosRequestConfig,
 ): Promise<AxiosResponse<User>> => {
-  return axios.default.post(`/users`, userCreateRequest, options);
+  return axios.post(`/users`, userCreateRequest, options);
 };
 
 export const getPostUsersMutationFetcher = (options?: AxiosRequestConfig) => {
@@ -107,7 +112,7 @@ export const getUsersId = (
   id: string,
   options?: AxiosRequestConfig,
 ): Promise<AxiosResponse<User>> => {
-  return axios.default.get(`/users/${id}`, options);
+  return axios.get(`/users/${id}`, options);
 };
 
 export const getGetUsersIdKey = (id: string) => [`/users/${id}`] as const;
@@ -150,7 +155,7 @@ export const putUsersId = (
   userUpdateRequest: UserUpdateRequest,
   options?: AxiosRequestConfig,
 ): Promise<AxiosResponse<User>> => {
-  return axios.default.put(`/users/${id}`, userUpdateRequest, options);
+  return axios.put(`/users/${id}`, userUpdateRequest, options);
 };
 
 export const getPutUsersIdMutationFetcher = (id: string, options?: AxiosRequestConfig) => {
@@ -199,11 +204,10 @@ export const deleteUsersId = (
   id: string,
   options?: AxiosRequestConfig,
 ): Promise<AxiosResponse<void>> => {
-  return axios.default.delete(`/users/${id}`, options);
+  return axios.delete(`/users/${id}`, options);
 };
 
 export const getDeleteUsersIdMutationFetcher = (id: string, options?: AxiosRequestConfig) => {
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   return (_: Key, __: { arg: Arguments }): Promise<AxiosResponse<void>> => {
     return deleteUsersId(id, options);
   };

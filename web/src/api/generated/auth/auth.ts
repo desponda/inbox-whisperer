@@ -6,20 +6,20 @@
 
  * OpenAPI spec version: 0.1.0
  */
-import * as axios from 'axios';
+import axios from 'axios';
 import type { AxiosError, AxiosRequestConfig, AxiosResponse } from 'axios';
 
 import useSwr from 'swr';
 import type { Key, SWRConfiguration } from 'swr';
 
-import type { ErrorResponse, GetApiAuthCallbackParams } from '.././';
+import type { ErrorResponse, GetApiAuthCallbackParams } from '../inboxWhispererAPI.schemas';
 
 /**
  * Redirects the user to Google's OAuth2 consent screen. Sets up session state for CSRF protection.
  * @summary Start Google OAuth2 login
  */
 export const getApiAuthLogin = (options?: AxiosRequestConfig): Promise<AxiosResponse<unknown>> => {
-  return axios.default.get(`/api/auth/login`, options);
+  return axios.get(`/api/auth/login`, options);
 };
 
 export const getGetApiAuthLoginKey = () => [`/api/auth/login`] as const;
@@ -58,7 +58,7 @@ export const getApiAuthCallback = (
   params: GetApiAuthCallbackParams,
   options?: AxiosRequestConfig,
 ): Promise<AxiosResponse<unknown>> => {
-  return axios.default.get(`/api/auth/callback`, {
+  return axios.get(`/api/auth/callback`, {
     ...options,
     params: { ...params, ...options?.params },
   });

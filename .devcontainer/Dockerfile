@@ -1,5 +1,5 @@
 # Custom Devcontainer for Docker, Go, and React
-FROM golang:1.24
+FROM golang:1.24.2
 
 # Set noninteractive installation
 ENV DEBIAN_FRONTEND=noninteractive
@@ -25,14 +25,14 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     docker-compose && \
     rm -rf /var/lib/apt/lists/*
 
-# Install Node.js (LTS) and npm from NodeSource
-RUN curl -fsSL https://deb.nodesource.com/setup_lts.x | bash - \
+# Install Node.js 21.x and npm from NodeSource
+RUN curl -fsSL https://deb.nodesource.com/setup_21.x | bash - \
     && apt-get install -y nodejs
 
 # Install Go tools and golang-migrate (v4.18.2) and gomock/mockgen
 RUN go install golang.org/x/tools/gopls@latest && \
     go install github.com/go-delve/delve/cmd/dlv@latest && \
-    go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest && \
+    go install github.com/golangci/golint/cmd/golangci-lint@latest && \
     go install github.com/golang/mock/mockgen@latest && \
     curl -fL https://github.com/golang-migrate/migrate/releases/download/v4.18.2/migrate.linux-amd64.tar.gz -o migrate.tar.gz && \
     tar -xvzf migrate.tar.gz && \

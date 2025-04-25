@@ -6,13 +6,13 @@
 
  * OpenAPI spec version: 0.1.0
  */
-import * as axios from 'axios';
+import axios from 'axios';
 import type { AxiosError, AxiosRequestConfig, AxiosResponse } from 'axios';
 
 import useSwr from 'swr';
 import type { Key, SWRConfiguration } from 'swr';
 
-import type { EmailContent, EmailSummary, ErrorResponse } from '.././';
+import type { EmailContent, EmailSummary, ErrorResponse } from '../inboxWhispererAPI.schemas';
 
 /**
  * Fetches the latest emails for the authenticated user and returns a list of email summaries.
@@ -21,7 +21,7 @@ import type { EmailContent, EmailSummary, ErrorResponse } from '.././';
 export const getApiEmailMessages = (
   options?: AxiosRequestConfig,
 ): Promise<AxiosResponse<EmailSummary[]>> => {
-  return axios.default.get(`/api/email/messages`, options);
+  return axios.get(`/api/email/messages`, options);
 };
 
 export const getGetApiEmailMessagesKey = () => [`/api/email/messages`] as const;
@@ -62,7 +62,7 @@ export const getApiEmailMessagesId = (
   id: string,
   options?: AxiosRequestConfig,
 ): Promise<AxiosResponse<EmailContent>> => {
-  return axios.default.get(`/api/email/messages/${id}`, options);
+  return axios.get(`/api/email/messages/${id}`, options);
 };
 
 export const getGetApiEmailMessagesIdKey = (id: string) => [`/api/email/messages/${id}`] as const;

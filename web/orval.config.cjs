@@ -4,7 +4,7 @@ module.exports = {
     output: {
       mode: 'tags-split',
       target: './src/api/generated/',
-      schemas: './src/api/generated/model.ts',
+      // schemas: './src/api/generated/model.ts',
       client: 'swr',
       mock: false,
     },
