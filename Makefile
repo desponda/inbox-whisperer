@@ -66,6 +66,11 @@ db-up:
 .PHONY: dev-up
 dev-up:
 	docker-compose up -d
+	# Wait for Postgres to be ready
+	until docker-compose exec -T db pg_isready -U inbox; do \
+	  echo "Waiting for database..."; \
+	  sleep 1; \
+	done
 	for f in $(sort $(wildcard migrations/*_*.up.sql)); do \
 	  echo "Applying $$f"; \
 	  cat $$f | docker-compose exec -T db psql -U inbox -d inboxwhisperer 2>&1 | grep -v 'already exists' || true; \

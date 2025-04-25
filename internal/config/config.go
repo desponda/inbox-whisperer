@@ -3,6 +3,7 @@ package config
 import (
 	"encoding/json"
 	"os"
+	"fmt"
 )
 
 type GoogleConfig struct {
@@ -28,15 +29,45 @@ type AppConfig struct {
 }
 
 func LoadConfig(path string) (*AppConfig, error) {
-	f, err := os.Open(path)
-	if err != nil {
-		return nil, err
+	// Log the config path
+	fmt.Fprintf(os.Stderr, "[DEBUG] Attempting to load config from: %s\n", path)
+
+	// Try to stat the file
+	info, err := os.Stat(path)
+	if err == nil && !info.IsDir() {
+		// File exists, try to load it
+		f, err := os.Open(path)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "[ERROR] Failed to open %s: %v\n", path, err)
+			return nil, err
+		}
+		defer f.Close()
+		dec := json.NewDecoder(f)
+		var cfg AppConfig
+		if err := dec.Decode(&cfg); err != nil {
+			fmt.Fprintf(os.Stderr, "[ERROR] Failed to decode config JSON: %v\n", err)
+			return nil, err
+		}
+		fmt.Fprintf(os.Stderr, "[DEBUG] Config loaded successfully from %s\n", path)
+		return &cfg, nil
 	}
-	defer f.Close()
-	dec := json.NewDecoder(f)
-	var cfg AppConfig
-	if err := dec.Decode(&cfg); err != nil {
-		return nil, err
+
+	fmt.Fprintf(os.Stderr, "[WARN] Config file not found at %s, attempting to load from environment variables\n", path)
+	cfg := AppConfig{
+		Google: GoogleConfig{
+			ClientID:     os.Getenv("GOOGLE_CLIENT_ID"),
+			ClientSecret: os.Getenv("GOOGLE_CLIENT_SECRET"),
+			RedirectURL:  os.Getenv("GOOGLE_REDIRECT_URL"),
+		},
+		OpenAI: OpenAIConfig{
+			APIKey: os.Getenv("OPENAI_API_KEY"),
+		},
+		Server: ServerConfig{
+			Port:     os.Getenv("SERVER_PORT"),
+			DBUrl:    os.Getenv("DATABASE_URL"),
+			LogLevel: os.Getenv("LOG_LEVEL"),
+		},
 	}
 	return &cfg, nil
 }
+

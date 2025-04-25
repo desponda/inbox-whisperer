@@ -49,7 +49,11 @@ func main() {
 }
 
 func mustLoadConfig() *config.AppConfig {
-	cfg, err := config.LoadConfig("config.json")
+	configPath := os.Getenv("CONFIG_FILE")
+	if configPath == "" {
+		configPath = "config.json"
+	}
+	cfg, err := config.LoadConfig(configPath)
 	if err != nil {
 		log.Fatal().Err(err).Msg("Failed to load config")
 		os.Exit(1)
