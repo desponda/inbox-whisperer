@@ -40,6 +40,9 @@ htmlcov/
 .coverage
 .coverage.*
 
+# Inbox Whisperer secrets
+config.json
+
 # Node & React
 node_modules/
 build/

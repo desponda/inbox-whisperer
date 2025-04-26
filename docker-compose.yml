@@ -1,0 +1,83 @@
+version: '3.8'
+
+# Enable BuildKit for all services
+x-build-config: &build-config
+  args:
+    BUILDKIT_INLINE_CACHE: 1
+
+services:
+  db:
+    image: postgres:16
+    restart: always
+    environment:
+      POSTGRES_USER: inbox
+      POSTGRES_PASSWORD: inboxpw
+      POSTGRES_DB: inboxwhisperer
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U inbox"]
+      interval: 2s
+      timeout: 5s
+      retries: 10
+      start_period: 5s
+
+  migration:
+    build:
+      context: ./
+      dockerfile: scripts/Dockerfile.migration
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      PGPASSWORD: inboxpw
+
+  backend:
+    build:
+      context: .
+      dockerfile: ./cmd/backend/Dockerfile
+      <<: *build-config
+    environment:
+      SERVER_PORT: "8080"
+      DATABASE_URL: "postgres://inbox:inboxpw@db:5432/inboxwhisperer?sslmode=disable"
+      LOG_LEVEL: "info"
+      GOOGLE_CLIENT_ID: "<GOOGLE_CLIENT_ID>"
+      GOOGLE_CLIENT_SECRET: "<GOOGLE_CLIENT_SECRET>"
+      GOOGLE_REDIRECT_URL: "<GOOGLE_REDIRECT_URL>"
+      FRONTEND_URL: "http://localhost:3000"
+      OPENAI_API_KEY: ""
+      ENV: ${ENV:-dev}
+    depends_on:
+      migration:
+        condition: service_completed_successfully
+    networks:
+      - appnet
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./migrations:/app/migrations:ro
+      - ./config.json:/app/config.json:ro
+
+  frontend:
+    build:
+      context: ./web
+      dockerfile: Dockerfile
+      <<: *build-config
+    environment:
+      VITE_API_URL: ${VITE_API_URL:-http://localhost:8080/api}
+      NODE_ENV: ${NODE_ENV:-development}
+    depends_on:
+      - backend
+    ports:
+      - "3000:80"
+    # volumes:
+    #   - ./web:/app
+
+volumes:
+  pgdata:
+
+networks:
+  appnet:
+    driver: bridge

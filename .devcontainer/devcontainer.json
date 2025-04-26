@@ -42,5 +42,6 @@
       ]
     }
   },
+  "runArgs": ["--network=host"],
   "remoteUser": "root"
 }
