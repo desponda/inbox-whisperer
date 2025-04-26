@@ -1,7 +1,5 @@
 import React from 'react';
-if (process.env.NODE_ENV !== 'test') {
-  require('../fonts/inter.css');
-}
+import '../fonts/inter.css';
 import { useUser } from '../context/UserContext';
 
 const InboxIcon = () => (

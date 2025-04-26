@@ -35,10 +35,14 @@ This document tracks the implementation plan and checklist for the Inbox Whisper
 
 ### 2. API Client
 - [x] Ensure OpenAPI spec is up-to-date for all backend endpoints.
-- [ ] Use openapi-generator or similar to auto-generate a TypeScript client.
-- [ ] Integrate the generated client for all API calls.
+- [x] Use openapi-generator or similar to auto-generate a TypeScript client (present in src/api/generated).
+- [ ] Integrate the generated client for all API calls (in progress; some manual fetches remain).
 
 ---
+
+**Update 2025-04-26:**
+- Nginx config now supports SPA fallback and proxies /api requests to the backend, enabling full-stack login and session flows.
+- OpenAPI TypeScript client is generated and present, but not yet fully integrated throughout the frontend (manual fetches still used in some places).
 
 **Next:** Begin scaffolding the Home (landing) and Login pages using strict best practices and DaisyUI.
 

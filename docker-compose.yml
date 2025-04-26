@@ -23,6 +23,8 @@ services:
       timeout: 5s
       retries: 10
       start_period: 5s
+    networks:
+      - appnet
 
   migration:
     build:
@@ -33,6 +35,8 @@ services:
         condition: service_healthy
     environment:
       PGPASSWORD: inboxpw
+    networks:
+      - appnet
 
   backend:
     build:
@@ -72,6 +76,8 @@ services:
       - backend
     ports:
       - "3000:80"
+    networks:
+      - appnet
     # volumes:
     #   - ./web:/app
 

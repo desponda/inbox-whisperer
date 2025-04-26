@@ -1,6 +1,8 @@
 #!/bin/sh
 set -e
 
+echo "[DEBUG] migrate-and-wait.sh loaded at $(date)"
+
 # Wait for Postgres to be ready
 /scripts/wait-for-postgres.sh db 5432
 
