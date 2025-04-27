@@ -1,15 +1,13 @@
 // Jest configuration for Vite + React + TypeScript (CommonJS)
 module.exports = {
   testEnvironment: 'jsdom',
-  transform: {
-    '^.+\\.(ts|tsx)$': 'ts-jest',
-  },
-  moduleFileExtensions: ['ts', 'tsx', 'js', 'jsx', 'json', 'node', 'css'],
-  setupFilesAfterEnv: ['<rootDir>/setupTests.ts'],
-
+  setupFilesAfterEnv: ['<rootDir>/src/setupTests.ts'],
   moduleNameMapper: {
-    '^.+\.css$': 'identity-obj-proxy',
-    '^.+\.(less|scss|sass)$': 'identity-obj-proxy',
+    '\.(css|less|scss|sass)$': 'identity-obj-proxy',
   },
+  transform: {
+    '^.+\.(t|j)sx?$': ['@swc/jest'],
+  },
+  moduleFileExtensions: ['ts', 'tsx', 'js', 'jsx', 'json', 'node'],
   testMatch: ['<rootDir>/src/**/*.(spec|test).(ts|tsx|js)'],
 };

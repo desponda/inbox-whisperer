@@ -1,11 +1,22 @@
 import React from 'react';
 import '/fonts/inter.css';
 
-const Login: React.FC = () => (
-  <main
-    className="min-h-screen flex flex-col text-gray-100 bg-[#0e1015]"
-    style={{ fontFamily: "'DM Sans', 'Inter', ui-sans-serif, system-ui, sans-serif" }}
-  >
+const Login: React.FC = () => {
+  const searchParams = new URLSearchParams(window.location.search);
+  const reason = searchParams.get('reason');
+  const [message, setMessage] = React.useState<string>('');
+
+  React.useEffect(() => {
+    if (reason === 'session_expired') {
+      setMessage('Your session has expired. Please log in again.');
+    }
+  }, [reason]);
+
+  return (
+    <main
+      className="min-h-screen flex flex-col text-gray-100 bg-[#0e1015]"
+      style={{ fontFamily: "'DM Sans', 'Inter', ui-sans-serif, system-ui, sans-serif" }}
+    >
     <style>{`
       body, .font-sans {
         font-family: 'DM Sans', 'Inter', ui-sans-serif, system-ui, sans-serif;
@@ -77,7 +88,15 @@ const Login: React.FC = () => (
     </nav>
     {/* LOGIN SECTION */}
     <section className="flex-1 flex flex-col items-center justify-center px-4 z-10 relative">
-      <div className="w-full max-w-md flex flex-col items-center justify-center text-center py-16">
+      <div className="flex flex-col items-center justify-center flex-grow px-4 py-12 z-10">
+        <h1 className="text-4xl font-bold mb-8 text-center tracking-tight">
+          Welcome to Inbox Whisperer
+        </h1>
+        {message && (
+          <div className="mb-8 p-4 bg-opacity-10 bg-white rounded-lg text-center text-white">
+            {message}
+          </div>
+        )}
         <h2 className="text-3xl md:text-4xl font-black mb-6 tracking-tight leading-tight">
           <span className="text-white">Sign in to </span>
           <span
@@ -156,7 +175,8 @@ const Login: React.FC = () => (
         to { opacity: 1; transform: none; }
       }
     `}</style>
-  </main>
-);
+    </main>
+  );
+};
 
 export default Login;

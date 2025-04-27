@@ -13,6 +13,7 @@ import (
 
 // ClearSession expires the session_id cookie and removes the session from the store
 func ClearSession(w http.ResponseWriter, r *http.Request) {
+	// Get and clear session from store
 	cookie, err := r.Cookie("session_id")
 	sessionID := ""
 	if err == nil && cookie.Value != "" {
@@ -23,15 +24,20 @@ func ClearSession(w http.ResponseWriter, r *http.Request) {
 		delete(store.data, sessionID)
 		store.Unlock()
 	}
-	http.SetCookie(w, &http.Cookie{
-		Name:     "session_id",
-		Value:    "",
-		Path:     "/",
-		HttpOnly: true,
-		Secure:   false, // Set to true if using HTTPS
-		Expires:  time.Unix(0, 0),
-		MaxAge:   -1,
-	})
+
+	// Clear cookie for both / and /api paths to ensure it's fully removed
+	for _, path := range []string{"/", "/api"} {
+		http.SetCookie(w, &http.Cookie{
+			Name:     "session_id",
+			Value:    "",
+			Path:     path,
+			HttpOnly: true,
+			Secure:   true, // Always use Secure for session cookies
+			SameSite: http.SameSiteStrictMode,
+			Expires:  time.Unix(0, 0),
+			MaxAge:   -1,
+		})
+	}
 }
 
 type ctxKey int
