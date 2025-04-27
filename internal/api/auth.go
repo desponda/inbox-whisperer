@@ -1,7 +1,5 @@
 package api
 
-import "github.com/desponda/inbox-whisperer/internal/data"
-
 import (
 	"context"
 	"crypto/rand"
@@ -12,9 +10,11 @@ import (
 	"time"
 
 	"github.com/desponda/inbox-whisperer/internal/config"
+	"github.com/desponda/inbox-whisperer/internal/data"
 	"github.com/desponda/inbox-whisperer/internal/models"
 	"github.com/desponda/inbox-whisperer/internal/session"
 	"github.com/go-chi/chi/v5"
+	"github.com/rs/zerolog/log"
 	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/google"
 )
@@ -22,8 +22,9 @@ import (
 // AuthHandler holds the OAuth2 config and provides HTTP handlers for auth endpoints
 // (In production, you would inject user/session/token storage here as well)
 type AuthHandler struct {
-	OAuthConfig *oauth2.Config
-	UserTokens  data.UserTokenRepository
+	OAuthConfig  *oauth2.Config
+	UserTokens   data.UserTokenRepository
+	FrontendURL  string
 }
 
 // NewAuthHandler creates a new AuthHandler with the given app config
@@ -37,7 +38,8 @@ func NewAuthHandler(cfg *config.AppConfig, userTokens data.UserTokenRepository) 
 			Scopes:       defaultGoogleScopes,
 			Endpoint:     google.Endpoint,
 		},
-		UserTokens: userTokens,
+		UserTokens:  userTokens,
+		FrontendURL: cfg.Server.FrontendURL,
 	}
 }
 
@@ -46,8 +48,15 @@ func (h *AuthHandler) HandleLogin(w http.ResponseWriter, r *http.Request) {
 	// Generate a random state token for CSRF protection
 	state := generateRandomState(32)
 
+	// Log state generation and session/cookie info (do not log secrets)
+	// Cookie check is no longer needed since we're not using session_id
+	// log.Debug().Str("handler", "HandleLogin").Str("generated_state", state).Msg("Generated OAuth state and preparing to store in session")
+
 	session.SetSessionValue(w, r, "oauth_state", state)
+	// log.Debug().Str("handler", "HandleLogin").Str("stored_state", state).Msg("Stored OAuth state in session")
+
 	url := h.OAuthConfig.AuthCodeURL(state, oauth2.AccessTypeOffline)
+	// log.Debug().Str("handler", "HandleLogin").Str("redirect_url", url).Msg("Redirecting to OAuth provider")
 
 	http.Redirect(w, r, url, http.StatusFound)
 }
@@ -63,45 +72,58 @@ func generateRandomState(length int) string {
 
 // HandleCallback handles the OAuth2 redirect from Google
 func (h *AuthHandler) HandleCallback(w http.ResponseWriter, r *http.Request) {
+	// log.Debug().Str("handler", "HandleCallback").Msg("Received OAuth callback request")
 
-	ctx := context.Background()
+	ctx := r.Context()
 	code := r.URL.Query().Get("code")
 	if code == "" {
-
+		// log.Debug().Str("handler", "HandleCallback").Msg("Missing code in callback URL")
 		http.Error(w, "missing code", http.StatusBadRequest)
 		return
 	}
 
 	state := r.URL.Query().Get("state")
 	expectedState := session.GetSessionValue(r, "oauth_state")
+	// log.Debug().Str("handler", "HandleCallback").Str("received_state", state).Str("expected_state", expectedState).Msg("Comparing OAuth state values from callback and session")
 	if state == "" || expectedState == "" || state != expectedState {
-
-		http.Error(w, "invalid state parameter", http.StatusBadRequest)
+		log.Warn().Str("handler", "HandleCallback").Str("received_state", state).Str("expected_state", expectedState).Msg("Invalid or missing state parameter in callback")
+		session.ClearSession(w, r)
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusBadRequest)
+		_ = json.NewEncoder(w).Encode(map[string]string{
+			"error":   "invalid_state",
+			"message": "Session expired or invalid. Please try logging in again.",
+		})
 		return
 	}
 
 	tok, err := exchangeCodeForToken(h, ctx, code)
 	if err != nil {
+		log.Error().Str("handler", "HandleCallback").Err(err).Msg("Token exchange failed")
 		http.Error(w, "token exchange failed: "+err.Error(), http.StatusInternalServerError)
 		return
 	}
 
 	userID, email, err := getUserIDAndEmail(ctx, tok)
 	if err != nil {
+		log.Error().Str("handler", "HandleCallback").Err(err).Msg("Failed to get user ID and email from token")
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
+	// log.Debug().Str("handler", "HandleCallback").Str("user_id", userID).Str("email", email).Msg("User authenticated, persisting user and token")
 	ensureUserExists(ctx, h.UserTokens, userID, email, tok)
 
 	err = h.UserTokens.SaveUserToken(ctx, userID, tok)
 	if err != nil {
+		log.Error().Str("handler", "HandleCallback").Str("user_id", userID).Err(err).Msg("Failed to persist user token")
 		http.Error(w, "failed to persist user token", http.StatusInternalServerError)
 		return
 	}
 
+	// log.Debug().Str("handler", "HandleCallback").Str("user_id", userID).Msg("Setting session token and redirecting to frontend")
 	setSessionToken(w, r, userID, tok.AccessToken)
-	http.Redirect(w, r, "/", http.StatusFound)
+	http.Redirect(w, r, h.FrontendURL, http.StatusFound)
 }
 
 func getUserIDAndEmail(ctx context.Context, tok *oauth2.Token) (string, string, error) {
@@ -121,14 +143,9 @@ func getUserIDAndEmail(ctx context.Context, tok *oauth2.Token) (string, string, 
 
 func ensureUserExists(ctx context.Context, userTokens data.UserTokenRepository, userID, email string, tok *oauth2.Token) {
 	db, ok := userTokens.(interface {
-		GetByID(context.Context, string) (*models.User, error)
 		Create(context.Context, *models.User) error
 	})
 	if !ok {
-		return
-	}
-	_, err := db.GetByID(ctx, userID)
-	if err == nil {
 		return
 	}
 	if email == userID && tok != nil {
@@ -144,24 +161,22 @@ func ensureUserExists(ctx context.Context, userTokens data.UserTokenRepository, 
 			resp.Body.Close()
 		}
 	}
-	if err := db.Create(ctx, &models.User{
+	err := db.Create(ctx, &models.User{
 		ID:        userID,
 		Email:     email,
 		CreatedAt: time.Now().UTC(),
-	}); err != nil {
-		return
+	})
+	if err != nil {
+		log.Error().Str("user_id", userID).Str("email", email).Err(err).Msg("Failed to create user in ensureUserExists")
+	} else {
+		// log.Info().Str("user_id", userID).Str("email", email).Msg("User created successfully in ensureUserExists")
 	}
 }
 
 func setSessionToken(w http.ResponseWriter, r *http.Request, userID, token string) {
-
+	// Only set the session; do not write a response body
 	session.SetSession(w, r, userID, token)
-
-	w.WriteHeader(http.StatusOK)
-	if _, err := w.Write([]byte("OAuth2 flow complete. Token stored in DB and session for user: " + userID)); err != nil {
-		http.Error(w, "failed to write response", http.StatusInternalServerError)
-		return
-	}
+	// No response body here; the redirect will be handled by the caller
 }
 
 // exchangeCodeForToken exchanges an OAuth2 code for a token

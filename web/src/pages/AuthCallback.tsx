@@ -1,9 +1,11 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import '/fonts/inter.css';
+import { clearAllAuth } from '../context/UserContext';
 
-// You can import types from your OpenAPI-generated types if needed
-// import { components } from '../api/types';
+import { getAuth } from '../api/generated/auth/auth';
+
+const { getApiAuthCallback } = getAuth();
 
 const AuthCallback: React.FC = () => {
   const [status, setStatus] = useState<'loading' | 'error' | 'onboarding' | 'success'>('loading');
@@ -23,10 +25,8 @@ const AuthCallback: React.FC = () => {
         return;
       }
       try {
-        // Call your backend to finish OAuth (could be a fetch to /api/auth/callback)
-        // For MVP, assume backend sets session cookie and redirects here
-        // Optionally fetch user info to determine if onboarding is needed
-        // Simulate onboarding for first-time users
+        // Use the generated OpenAPI client to call the backend
+        await getApiAuthCallback({ code, state });
         const isFirstTime = params.get('first') === '1';
         if (isFirstTime) {
           setStatus('onboarding');
@@ -34,7 +34,15 @@ const AuthCallback: React.FC = () => {
           setStatus('success');
           setTimeout(() => navigate('/'), 1200);
         }
-      } catch {
+      } catch (err: any) {
+        // Try to handle invalid_state error from backend
+        if (err?.response?.data?.error === 'invalid_state') {
+          clearAllAuth();
+          setStatus('error');
+          setError('Session expired or invalid. Please try logging in again.');
+          return;
+        }
+        clearAllAuth();
         setStatus('error');
         setError('Authentication failed.');
       }
@@ -78,6 +86,22 @@ const AuthCallback: React.FC = () => {
               <div className="mb-6 animate-spin rounded-full h-12 w-12 border-t-4 border-accent border-solid" />
               <h2 className="text-2xl font-bold mb-2">Signing you in…</h2>
               <p className="text-base text-gray-300">Please wait while we complete your sign-in.</p>
+            </>
+          )}
+          {status === 'error' && (
+            <>
+              <div className="mb-6 text-4xl">🚫</div>
+              <h2 className="text-2xl font-bold mb-2">Authentication Error</h2>
+              <p className="text-base text-red-300 mb-4">{error || 'There was a problem signing you in.'}</p>
+              <button
+                className="mt-3 px-5 py-2 rounded bg-accent text-black font-semibold hover:bg-teal-400 transition"
+                onClick={() => {
+                  clearAllAuth();
+                  window.location.href = '/login';
+                }}
+              >
+                Retry Login
+              </button>
             </>
           )}
           {status === 'onboarding' && (

@@ -167,7 +167,7 @@ const Home: React.FC = () => {
           <div className="flex flex-col items-center gap-4 w-full">
             {loading ? null : user ? (
               <a
-                href="#" // Change to /dashboard when implemented
+                href="/dashboard"
                 className="btn btn-accent btn-lg font-bold rounded-full px-8 shadow-xl transition-transform hover:scale-105 focus:scale-105"
                 style={{ boxShadow: '0 4px 24px 0 #14e0c955' }}
               >

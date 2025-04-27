@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 	"os"
-	"path/filepath"
+
 	"testing"
 	"time"
 
@@ -74,13 +74,11 @@ func SetupTestDB(t *testing.T) (*DB, func()) {
 	}
 
 	// Use golang-migrate to run all migrations
-	// All migrations must use golang-migrate's .up.sql/.down.sql format and be placed in the migrations/ directory at repo root.
-	cwd, _ := os.Getwd()
-	migrationDir := cwd
-	for !fileExists(filepath.Join(migrationDir, "go.mod")) && migrationDir != "/" {
-		migrationDir = filepath.Dir(migrationDir)
+	// Allow override via MIGRATIONS_DIR env var, otherwise use new default location
+	migrationDir := os.Getenv("MIGRATIONS_DIR")
+	if migrationDir == "" {
+		migrationDir = "/workspaces/inbox-whisperer/migrations/image"
 	}
-	migrationDir = filepath.Join(migrationDir, "migrations")
 	if _, err := os.Stat(migrationDir); err != nil {
 		t.Fatalf("failed to find golang-migrate migrations directory at %s: %v", migrationDir, err)
 	}

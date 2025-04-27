@@ -5,7 +5,32 @@ import (
 	"github.com/desponda/inbox-whisperer/internal/session"
 	"github.com/go-chi/chi/v5"
 	"net/http"
+	"github.com/rs/zerolog/log"
 )
+
+// GetMe handles GET /api/users/me
+func (h *UserHandler) GetMe(w http.ResponseWriter, r *http.Request) {
+	// Extract session_id cookie for logging
+	var sessionID string
+	if cookie, err := r.Cookie("session_id"); err == nil {
+		sessionID = cookie.Value
+	}
+	userID := session.GetUserID(r.Context())
+	if userID == "" {
+		log.Debug().Str("session_id", sessionID).Msg("GetMe: not authenticated, no userID in session")
+		session.ClearSession(w, r)
+		RespondError(w, http.StatusUnauthorized, "not authenticated: no userID in session")
+		return
+	}
+	user, err := h.Service.GetUser(r.Context(), userID)
+	if err != nil {
+		log.Debug().Str("session_id", sessionID).Str("user_id", userID).Msg("GetMe: user not found")
+		RespondError(w, http.StatusNotFound, "user not found")
+		return
+	}
+	log.Debug().Str("session_id", sessionID).Str("user_id", userID).Msg("GetMe: user authenticated and found")
+	RespondJSON(w, http.StatusOK, user)
+}
 
 type UserHandler struct {
 	Service service.UserServiceInterface

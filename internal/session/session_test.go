@@ -7,7 +7,61 @@ import (
 	"testing"
 )
 
+// TestSessionMiddlewareAndSetSession tests the session middleware and session value setting.
 func TestSessionMiddlewareAndSetSession(t *testing.T) {
+
+	t.Run("SetSessionValue works after new session cookie", func(t *testing.T) {
+		mux := http.NewServeMux()
+		mux.HandleFunc("/setstate", func(w http.ResponseWriter, r *http.Request) {
+			SetSessionValue(w, r, "oauth_state", "test-state-123")
+			w.WriteHeader(http.StatusOK)
+		})
+		mux.HandleFunc("/getstate", func(w http.ResponseWriter, r *http.Request) {
+			val := GetSessionValue(r, "oauth_state")
+			if _, err := w.Write([]byte(val)); err != nil {
+				t.Fatalf("failed to write response: %v", err)
+			}
+		})
+
+		ts := httptest.NewServer(Middleware(mux))
+		defer ts.Close()
+
+		jar, err := NewTestCookieJar()
+		if err != nil {
+			t.Fatalf("failed to create cookie jar: %v", err)
+		}
+		client := &http.Client{Jar: jar}
+
+		// Call /setstate and check for session_id cookie
+		resp, err := client.Get(ts.URL + "/setstate")
+		if err != nil {
+			t.Fatalf("setstate failed: %v", err)
+		}
+		resp.Body.Close()
+		cookies := jar.Cookies(resp.Request.URL)
+		var sessionCookie *http.Cookie
+		for _, c := range cookies {
+			if c.Name == "session_id" {
+				sessionCookie = c
+				break
+			}
+		}
+		if sessionCookie == nil || sessionCookie.Value == "" {
+			t.Fatalf("session_id cookie not set by /setstate; got cookies: %+v", cookies)
+		}
+
+		// Call /getstate, which should send the session_id cookie
+		resp, err = client.Get(ts.URL + "/getstate")
+		if err != nil {
+			t.Fatalf("getstate failed: %v", err)
+		}
+		defer resp.Body.Close()
+		body, _ := io.ReadAll(resp.Body)
+		if string(body) != "test-state-123" {
+			t.Fatalf("expected state 'test-state-123', got '%s' (cookies: %+v)", string(body), jar.Cookies(resp.Request.URL))
+		}
+	})
+
 	var resp3, resp4 *http.Response
 	var body2 []byte
 	var got2 string

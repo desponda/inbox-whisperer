@@ -43,28 +43,41 @@ This is the canonical way to check your code before pushing or opening a PR.
 
 1. Copy `config.json.template` to `config.json` and fill in your real credentials (never commit secrets).
 2. Optionally, copy `.env.example` to `.env` and override any environment variables (API URLs, etc).
-3. Start everything (Postgres, backend, frontend, migrations) with:
+3. **For local Kubernetes (kind) development, use:**
+
+   ```sh
+   make dev-deploy
+   ```
+   This is the canonical, idempotent way to build, load, and deploy all components to your kind cluster. It will auto-detect or create a kind cluster, build all images, load them, and deploy via Helm using the latest code.
+
+4. For Docker Compose-based development (without Kubernetes), use:
 
    ```sh
    make dev-up
    ```
-   This is idempotent and applies all DB migrations.
+   This brings up Postgres, backend, frontend, and applies all DB migrations (idempotent, canonical workflow).
 
-4. To bring everything down and clean up volumes:
+5. To bring everything down and clean up volumes:
 
    ```sh
    make dev-down
    ```
 
-- See the Makefile for all targets and developer scripts.
 - The main React frontend lives in `web/` (not `ui/`).
 - Backend and frontend Dockerfiles are in `cmd/backend/` and `web/` respectively.
+- The only scripts you should run directly are in `scripts/dev-deploy.sh` (for kind) and Makefile targets. **Other scripts in `scripts/` are required for container startup (e.g., `wait-for-db.sh`) or database migrations, and should not be deleted.**
+- See the Makefile for all targets and developer scripts.
 - All config is environment-variable driven for dev/staging/prod flexibility.
 
-## Documentation
-- Features: [`features.md`](features.md)
-- Backend: [`developing.md`](developing.md)
-- Frontend: [`ui/README.md`](ui/README.md)
+## Continuous Integration (CI)
+
+All code and documentation changes are automatically checked in GitHub Actions:
+- **Backend:** Linting, vet, staticcheck, tidy, build, and test
+- **Frontend:** Install, lint, format, test, build
+- **Docs:** All markdown files in `/docs/` are linted for style and correctness using markdownlint
+- **Pull Requests:** PR titles are checked for semantic correctness
+
+You can view and troubleshoot CI runs in the GitHub Actions tab.
 
 ## License
 MIT

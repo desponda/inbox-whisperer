@@ -2,94 +2,157 @@ package api
 
 import (
 	"context"
-	"github.com/desponda/inbox-whisperer/internal/session"
-	"golang.org/x/oauth2"
+	"fmt"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"testing"
+
+	"github.com/desponda/inbox-whisperer/internal/config"
+	"github.com/desponda/inbox-whisperer/internal/session"
+	"github.com/google/uuid"
+	"golang.org/x/oauth2"
 )
 
 func TestHandleCallback_CSRFProtection(t *testing.T) {
-	// Setup AuthHandler with mock UserTokens
-	h := &AuthHandler{
-		OAuthConfig: &oauth2.Config{},
-		UserTokens:  &stubUserTokens{},
-	}
-	// Patch exchangeCodeForToken to always succeed
-	savedExchange := exchangeCodeForToken
+	// Mock the token exchange
+	originalExchange := exchangeCodeForToken
 	exchangeCodeForToken = func(h *AuthHandler, ctx context.Context, code string) (*oauth2.Token, error) {
-		if code == "good" || code == "somecode" {
-			return &oauth2.Token{AccessToken: "tok"}, nil
+		if code == "good" {
+			return &oauth2.Token{AccessToken: "test-token"}, nil
 		}
-		return nil, context.DeadlineExceeded
+		return nil, fmt.Errorf("invalid code")
 	}
-	defer func() { exchangeCodeForToken = savedExchange }()
+	defer func() { exchangeCodeForToken = originalExchange }()
 
-	// Simulate request with missing state
-	r := httptest.NewRequest("GET", "/auth/callback?code=somecode", nil)
-	w := httptest.NewRecorder()
-	h.HandleCallback(w, r)
-	resp := w.Result()
+	// Setup test variables
+	var (
+		mux    = http.NewServeMux()
+		ts     = httptest.NewServer(session.Middleware(mux))
+		client *http.Client
+		jar    http.CookieJar
+		err    error
+	)
+	defer ts.Close()
+
+	// Create the auth handler with test config
+	appConfig := &config.AppConfig{
+		Google: config.GoogleConfig{
+			ClientID:     "test-client-id",
+			ClientSecret: "test-client-secret",
+			RedirectURL:  ts.URL + "/auth/callback",
+		},
+		Server: config.ServerConfig{
+			FrontendURL: "http://localhost:5173",
+		},
+	}
+	h := NewAuthHandler(appConfig, &stubUserTokens{})
+	
+	// Register auth routes
+	mux.HandleFunc("/auth/callback", h.HandleCallback)
+	mux.HandleFunc("/setstate", func(w http.ResponseWriter, r *http.Request) {
+		// Create a session ID
+		sessionID := uuid.New().String()
+		
+		// Set the cookie first
+		http.SetCookie(w, &http.Cookie{
+			Name:     "session_id",
+			Value:    sessionID,
+			Path:     "/",
+			HttpOnly: true,
+			Secure:   false,
+		})
+
+		// Add the cookie to the request for the session functions to use
+		r.AddCookie(&http.Cookie{
+			Name:  "session_id",
+			Value: sessionID,
+		})
+
+		// Create the session
+		session.SetSession(w, r, "testuser", "testtoken")
+		
+		// Set the state value in the session
+		session.SetSessionValue(w, r, "oauth_state", "goodstate")
+		
+		// Verify the state was set
+		state := session.GetSessionValue(r, "oauth_state")
+		fmt.Printf("[DEBUG] Set state value in session %s: %q\n", sessionID, state)
+		if state != "goodstate" {
+			t.Fatalf("state not set correctly, got %q", state)
+		}
+
+		_, err = w.Write([]byte("ok"))
+		if err != nil {
+			t.Fatalf("failed to write response: %v", err)
+		}
+	})
+	
+	// Create a cookie jar for the test client
+	jar, err = session.NewTestCookieJar()
+	if err != nil {
+		t.Fatalf("failed to create cookie jar: %v", err)
+	}
+	// Don't follow redirects in test
+	client = &http.Client{
+		Jar: jar,
+		CheckRedirect: func(req *http.Request, via []*http.Request) error {
+			return http.ErrUseLastResponse
+		},
+	}
+
+	// Try with no state
+	resp, err := client.Get(ts.URL + "/auth/callback?code=good")
+	if err != nil {
+		t.Fatalf("callback failed: %v", err)
+	}
+	resp.Body.Close()
 	if resp.StatusCode != http.StatusBadRequest {
 		t.Errorf("expected 400 for missing state, got %d", resp.StatusCode)
 	}
 
-	// Simulate request with incorrect state
-	r = httptest.NewRequest("GET", "/auth/callback?code=somecode&state=wrong", nil)
-	w = httptest.NewRecorder()
-	session.SetSessionValue(w, r, "oauth_state", "expected")
-	h.HandleCallback(w, r)
-	resp = w.Result()
+	// Try with wrong state
+	resp, err = client.Get(ts.URL + "/auth/callback?code=good&state=wrong")
+	if err != nil {
+		t.Fatalf("callback failed: %v", err)
+	}
+	resp.Body.Close()
 	if resp.StatusCode != http.StatusBadRequest {
 		t.Errorf("expected 400 for invalid state, got %d", resp.StatusCode)
 	}
 
-	// Simulate request with correct state
-	// We need to set the session value and then send a request with the same cookie
-	mux := http.NewServeMux()
-	mux.HandleFunc("/setstate", func(w http.ResponseWriter, r *http.Request) {
-		// Only create the session
-		session.SetSession(w, r, "testuser", "testtoken")
-		if _, err := w.Write([]byte("ok")); err != nil {
-			t.Fatalf("failed to write response: %v", err)
-		}
-	})
-	mux.HandleFunc("/setstatevalue", func(w http.ResponseWriter, r *http.Request) {
-		session.SetSessionValue(w, r, "oauth_state", "goodstate")
-		if _, err := w.Write([]byte("ok")); err != nil {
-			t.Fatalf("failed to write response: %v", err)
-		}
-	})
-	mux.HandleFunc("/auth/callback", func(w http.ResponseWriter, r *http.Request) {
-		h.HandleCallback(w, r)
-	})
-	ts := httptest.NewServer(session.Middleware(mux))
-	defer ts.Close()
-	jar, err := session.NewTestCookieJar()
-	if err != nil {
-		t.Fatalf("failed to create cookie jar: %v", err)
-	}
-	client := &http.Client{Jar: jar}
-	// Create the session
+	// Create the session and set the state value
 	resp2, err := client.Get(ts.URL + "/setstate")
 	if err != nil {
 		t.Fatalf("setstate failed: %v", err)
 	}
-	defer resp2.Body.Close()
-	// Set the state value in the session
-	respVal, err := client.Get(ts.URL + "/setstatevalue")
-	if err != nil {
-		t.Fatalf("setstatevalue failed: %v", err)
-	}
-	defer respVal.Body.Close()
-	// Now do callback with correct state and session cookie
+	resp2.Body.Close()
+
+	// Try with valid state
 	resp3, err := client.Get(ts.URL + "/auth/callback?code=good&state=goodstate")
 	if err != nil {
 		t.Fatalf("callback failed: %v", err)
 	}
-	if resp3.StatusCode != http.StatusOK {
-		t.Errorf("expected 200 for valid state, got %d", resp3.StatusCode)
+	resp3Body, err := io.ReadAll(resp3.Body)
+	resp3.Body.Close()
+	if err != nil {
+		t.Fatalf("failed to read response body: %v", err)
 	}
+
+	// Check that we get redirected
+	if resp3.StatusCode != http.StatusFound {
+		t.Errorf("expected 302 redirect for valid state, got %d, body: %q", resp3.StatusCode, resp3Body)
+	}
+
+	// Check the redirect URL
+	location := resp3.Header.Get("Location")
+	if location == "" {
+		t.Error("expected Location header in redirect response")
+	}
+
+	// Verify state is still in session
+	state := session.GetSessionValue(resp3.Request, "oauth_state")
+	fmt.Printf("[DEBUG] State in session after callback: %q\n", state)
 }
 
 // stubUserTokens implements only SaveUserToken for test

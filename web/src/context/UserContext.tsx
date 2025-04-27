@@ -12,6 +12,17 @@ interface UserContextValue {
 
 const UserContext = createContext<UserContextValue | undefined>(undefined);
 
+export function clearAllAuth() {
+  // Expire all cookies (browser only allows path-level, so this is best effort)
+  document.cookie.split(';').forEach(cookie => {
+    const eqPos = cookie.indexOf('=');
+    const name = eqPos > -1 ? cookie.substr(0, eqPos) : cookie;
+    document.cookie = name + '=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/;SameSite=Strict';
+  });
+  localStorage.clear();
+  sessionStorage.clear();
+}
+
 export const UserProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User>(null);
   const [loading, setLoading] = useState(true);
@@ -26,6 +37,12 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
           const data = await res.json();
           setUser(data);
         } else {
+          // On 401, clear cookies, localStorage, and redirect to login with message
+          if (res.status === 401) {
+            clearAllAuth();
+            window.location.href = '/login?reason=session_expired';
+            return;
+          }
           setUser(null);
         }
       } catch {

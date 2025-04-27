@@ -1,0 +1,4 @@
+apiVersion: v2
+name: inbox-whisperer
+version: 0.1.0
+description: A minimal 3-tier app for kind demo

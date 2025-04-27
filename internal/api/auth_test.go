@@ -74,13 +74,13 @@ func TestHandleCallback(t *testing.T) {
 			name:       "missing state",
 			query:      "?code=good",
 			wantStatus: http.StatusBadRequest,
-			wantInBody: "state parameter",
+			wantInBody: "Session expired or invalid. Please try logging in again.",
 		},
 		{
 			name:       "invalid state",
 			query:      "?code=good&state=invalid",
 			wantStatus: http.StatusBadRequest,
-			wantInBody: "state parameter",
+			wantInBody: "Session expired or invalid. Please try logging in again.",
 		},
 		{
 			name:       "token exchange fails",

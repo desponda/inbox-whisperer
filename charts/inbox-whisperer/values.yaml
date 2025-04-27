@@ -1,0 +1,15 @@
+dev: true
+
+backend:
+  image: backend:latest
+  imagePullPolicy: Never
+  replicaCount: 1
+  configSecretName: backend-config
+  configMountPath: /app/config/config.json
+frontend:
+  image: frontend:latest
+  imagePullPolicy: Never
+  replicaCount: 1
+db:
+  image: postgres:16
+  replicaCount: 1

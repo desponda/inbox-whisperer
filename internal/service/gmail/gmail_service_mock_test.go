@@ -52,13 +52,9 @@ func (m *mockGmailAPI) UsersMessagesList(userID string) UsersMessagesListCall {
 	return &mockUsersMessagesListCallWithPaging{allMessages: m.listResp, err: m.listErr}
 }
 
-
-
-
-
 type mockUsersMessagesListCallWithPaging struct {
 	allMessages *gmail.ListMessagesResponse
-	err        error
+	err         error
 }
 
 func (c *mockUsersMessagesListCallWithPaging) Do(...googleapi.CallOption) (*gmail.ListMessagesResponse, error) {
@@ -73,7 +69,6 @@ func (c *mockUsersMessagesListCallWithPaging) Do(...googleapi.CallOption) (*gmai
 	resp.Messages = c.allMessages.Messages
 	return resp, c.err
 }
-
 
 func TestGmailService_FetchMessageContent_ErrorPaths(t *testing.T) {
 	repo := &dummyRepo{}

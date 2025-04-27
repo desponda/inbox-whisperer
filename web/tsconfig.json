@@ -8,6 +8,12 @@
       "@/*": ["src/*"]
     }
   },
+  "include": [
+    "src"
+  ],
+  "exclude": [
+    "src/api/generated/**/*"
+  ],
   "files": [],
   "references": [{ "path": "./tsconfig.app.json" }, { "path": "./tsconfig.node.json" }]
 }

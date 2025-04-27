@@ -1,12 +1,39 @@
 # Makefile for Inbox Whisperer
 
+.PHONY: install start setup help clean lint vet staticcheck lint-strict test ci tidy ui-install ui-dev ui-build ui-lint ui-test ui-typecheck ui-coverage ui-generate-api-client kind-up kind-load dev-deploy dev-up dev-down backend-build frontend-build format security
+
 # Install all dependencies and fonts
 install:
 	npm install --prefix web
 
+# Build all images (backend, frontend, migrate)
+build-all:
+	bash scripts/dev/dev-deploy.sh --build-all
+
+# Build backend image and restart deployment
+build-backend:
+	bash scripts/dev/dev-deploy.sh --build-backend
+
+# Build frontend image and restart deployment
+build-frontend:
+	bash scripts/dev/dev-deploy.sh --build-frontend
+
+# Build migration image
+build-migrate:
+	bash scripts/dev/dev-deploy.sh --build-migrate
+
 # Start the dev server
 start:
 	npm run dev --prefix web -- --host
+
+# Format Go and frontend code
+format:
+	gofmt -w .
+	npm run fmt --prefix web || true
+
+# Security checks (example: gosec)
+security:
+	gosec ./...
 
 # Full setup (install + start)
 setup: install start
@@ -15,118 +42,85 @@ setup: install start
 #   make <target>
 #
 # Key targets:
-#   ci                  Run all backend and frontend lint, typecheck, and tests (canonical local CI)
-#   ui-install          Install frontend dependencies
-#   ui-dev              Start React dev server
-#   ui-build            Build React app for production
-#   ui-lint             Lint frontend code
-#   ui-test             Run frontend tests
-#   ui-typecheck        Typecheck frontend code
-#   ui-coverage         Generate frontend coverage report
-#   ui-generate-api-client  Generate TypeScript API client from OpenAPI spec
-#   lint                Lint backend Go code
-#   vet                 Run go vet static analysis
-#   staticcheck         Run staticcheck static analysis
-#   lint-strict         Run all Go lint/static checks (lint, vet, staticcheck)
-#   test                Run backend Go tests
-#   dev-up              Start DB and apply migrations (local/dev)
-#   migrate-create      Create a new DB migration
-#   tidy                Run go mod tidy
-#   clean               Remove temp/test output files
-#   help                Show this help message
+#   ci                  Run all backend and frontend lint, typecheck, tests, and builds (canonical local CI)
+#   backend-build       Build backend Docker image (uses cmd/backend/.dockerignore)
+#   frontend-build      Build frontend Docker image (uses web/.dockerignore)
+#   format              Format all code (Go + frontend)
+#   security            Run security checks (Go)
+#   dev-up              Start full stack for local dev (docker-compose, kind, or scripts)
+#   dev-down            Tear down local dev stack
+#   ...                 (see below for more targets)
 #
-# For more info, see README.md and migrations/README.md
-
-
 help:
 	@echo "Available targets:"
 	@grep -E '^[a-zA-Z0-9_-]+:|^# ' Makefile | \
 	  sed -E 's/^([a-zA-Z0-9_-]+):.*/\1/;s/^# //' | \
-	  awk 'BEGIN{t=""} /^[a-zA-Z0-9_-]+$/ {if(t!=""){print t}; t=$0; next} {t=t" "$0} END{print t}' | \
+	  awk 'BEGIN{t=""} /^[a-zA-Z0-9_-]+$/ {if(t!=""){print t}; t=$$0; next} {t=t" "$0} END{print t}' | \
 	  column -t -s ':'
 
 clean:
 	rm -f test-output.txt
 
-.PHONY: db-up db-init
-
-# Makefile for Inbox Whisperer DB management
-# -----------------------------------------
-# LOCAL DEVELOPMENT: Use only the psql-migrate-up target for applying migrations.
-# This works reliably in devcontainers, VSCode, and all local setups.
-#
-# CI/CD/Production: Use the docker-migrate-* targets (ensure migration files are present on the host).
-
-# Start the database container
-.PHONY: db-up
-db-up:
-	docker-compose up -d db
-
-# Bring up the entire dev stack (frontend, backend, db) and apply all migrations (IDEMPOTENT)
-.PHONY: dev-up
-dev-up:
-	docker-compose up -d
-	# Wait for Postgres to be ready
-	until docker-compose exec -T db pg_isready -U inbox; do \
-	  echo "Waiting for database..."; \
-	  sleep 1; \
-	done
-	for f in $(sort $(wildcard migrations/*_*.up.sql)); do \
-	  echo "Applying $$f"; \
-	  cat $$f | docker-compose exec -T db psql -U inbox -d inboxwhisperer 2>&1 | grep -v 'already exists' || true; \
-	done
-
-# Bring down all dev containers and remove volumes
-.PHONY: dev-down
-dev-down:
-	docker-compose down -v
-
-# Apply all migrations using psql (RECOMMENDED for local/dev)
-.PHONY: psql-migrate-up
-psql-migrate-up:
-	docker-compose up -d db
-	for f in $(sort $(wildcard migrations/*_*.up.sql)); do \
-	  echo "Applying $$f"; \
-	  cat $$f | docker-compose exec -T db psql -U inbox -d inboxwhisperer; \
-	done
-
-# Create a new migration (creates up/down SQL files)
-.PHONY: migrate-create
-migrate-create:
-	@read -p "Migration name: " name; migrate create -dir ./migrations -ext sql $$name
-
-# Run all backend and frontend lint, typecheck, and tests (canonical local CI)
-.PHONY: ci
-ci: lint vet staticcheck tidy test ui-install ui-lint ui-typecheck ui-test ui-build
-
-.PHONY: ui-install ui-lint ui-typecheck ui-test ui-build
-ui-install:
-	npm install --prefix web
-
-ui-lint:
-	npm run lint --prefix web
-
-ui-typecheck:
-	npm run typecheck --prefix web
-
-ui-test:
-	npm test --prefix web
-
-ui-build:
-	npm run build --prefix web
-
-ui-fmt:
-	npm run fmt --prefix web
-
-# Lint the codebase using golangci-lint (idempotent)
-.PHONY: lint vet staticcheck lint-strict
+# Go targets
 lint:
 	@echo 'Checking gofmt...'
 	@gofmt -l . | grep -v '^vendor/' | tee /tmp/gofmt.out
 	@if [ -s /tmp/gofmt.out ]; then echo 'gofmt needs to be run on these files:'; cat /tmp/gofmt.out; exit 1; fi
 	golangci-lint run ./...
 
-# Run go vet static analysis
+# Frontend targets
+ui-install:
+	npm install --prefix web
+
+ui-dev:
+	npm run dev --prefix web -- --host
+
+ui-build:
+	npm run build --prefix web
+
+ui-lint:
+	npm run lint --prefix web
+
+ui-test:
+	npm test --prefix web
+
+ui-typecheck:
+	npm run typecheck --prefix web
+
+ui-coverage:
+	npm run coverage --prefix web
+
+ui-generate-api-client:
+	npm run generate:openapi --prefix web
+
+# KIND/Kubernetes targets
+kind-up:
+	kind create cluster --name inbox-whisperer || true
+
+kind-load:
+	kind load docker-image inboxwhisperer-backend:latest --name inbox-whisperer
+	kind load docker-image inboxwhisperer-frontend:latest --name inbox-whisperer
+
+# Deploy all (build, load, secrets, helm upgrade/install, restart deployments)
+deploy-all:
+	bash scripts/dev/dev-deploy.sh --deploy-all
+
+# Local dev up/down (example: using scripts or docker-compose)
+dev-up:
+	bash scripts/dev/dev-deploy.sh
+
+create-secrets:
+	bash scripts/dev/dev-deploy.sh --create-secrets
+
+# DB migration
+migrate-create:
+	@read -p "Migration name: " name; migrate create -dir ./migrations -ext sql $$name
+
+.PHONY: install start setup help clean lint vet staticcheck lint-strict test ci tidy ui-install ui-dev ui-build ui-lint ui-test ui-typecheck ui-coverage ui-generate-api-client kind-up kind-load dev-deploy dev-up dev-down backend-build frontend-build format security
+
+ui-fmt:
+	npm run fmt --prefix web
+
 vet:
 	go vet ./...
 

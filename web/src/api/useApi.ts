@@ -16,3 +16,6 @@ export function useCurrentUser() {
 }
 
 // Add more hooks as needed, e.g. for onboarding, emails, etc.
+
+// Dummy mutator for Orval compatibility
+export const useApi = () => ({});

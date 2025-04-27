@@ -200,12 +200,12 @@ func TestGmailService_FetchMessages_Pagination(t *testing.T) {
 	for i := 0; i < 10; i++ {
 		m := allMsgs[i]
 		mockAPI.listResp.Messages = append(mockAPI.listResp.Messages, &gmail.Message{
-			Id: m.EmailMessageID,
-			ThreadId: m.ThreadID,
-			Snippet: m.Snippet,
-			Payload: &gmail.MessagePart{Headers: []*gmail.MessagePartHeader{{Name: "Subject", Value: m.Subject}, {Name: "From", Value: m.Sender}, {Name: "Date", Value: time.Now().Format(time.RFC3339)}}},
+			Id:           m.EmailMessageID,
+			ThreadId:     m.ThreadID,
+			Snippet:      m.Snippet,
+			Payload:      &gmail.MessagePart{Headers: []*gmail.MessagePartHeader{{Name: "Subject", Value: m.Subject}, {Name: "From", Value: m.Sender}, {Name: "Date", Value: time.Now().Format(time.RFC3339)}}},
 			InternalDate: m.InternalDate,
-			HistoryId: uint64(m.HistoryID),
+			HistoryId:    uint64(m.HistoryID),
 		})
 	}
 	msgs, err := svc.FetchMessages(testCtx, tok)
@@ -222,12 +222,12 @@ func TestGmailService_FetchMessages_Pagination(t *testing.T) {
 	for i := 10; i < 15; i++ {
 		m := allMsgs[i]
 		mockAPI.listResp.Messages = append(mockAPI.listResp.Messages, &gmail.Message{
-			Id: m.EmailMessageID,
-			ThreadId: m.ThreadID,
-			Snippet: m.Snippet,
-			Payload: &gmail.MessagePart{Headers: []*gmail.MessagePartHeader{{Name: "Subject", Value: m.Subject}, {Name: "From", Value: m.Sender}, {Name: "Date", Value: time.Now().Format(time.RFC3339)}}},
+			Id:           m.EmailMessageID,
+			ThreadId:     m.ThreadID,
+			Snippet:      m.Snippet,
+			Payload:      &gmail.MessagePart{Headers: []*gmail.MessagePartHeader{{Name: "Subject", Value: m.Subject}, {Name: "From", Value: m.Sender}, {Name: "Date", Value: time.Now().Format(time.RFC3339)}}},
 			InternalDate: m.InternalDate,
-			HistoryId: uint64(m.HistoryID),
+			HistoryId:    uint64(m.HistoryID),
 		})
 	}
 	ctx2 := context.WithValue(testCtx, CtxKeyAfterID{}, last.EmailMessageID)

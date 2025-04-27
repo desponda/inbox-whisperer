@@ -7,7 +7,7 @@ echo "[DEBUG] migrate-and-wait.sh loaded at $(date)"
 /scripts/wait-for-postgres.sh db 5432
 
 # Apply all migrations
-for f in /workspaces/inbox-whisperer/migrations/*_*.up.sql; do
+for f in /migrations/*_*.up.sql; do
   echo "Applying $f"
-  cat "$f" | PGPASSWORD=inboxpw psql -h db -U inbox -d inboxwhisperer -v ON_ERROR_STOP=1 || true
+  cat "$f" | PGPASSWORD="$PGPASSWORD" psql -h "$POSTGRES_HOST" -U "$POSTGRES_USER" -d "$POSTGRES_DB" -v ON_ERROR_STOP=1 || true
 done

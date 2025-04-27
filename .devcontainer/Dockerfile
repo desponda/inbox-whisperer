@@ -4,7 +4,7 @@ FROM golang:1.24.2
 # Set noninteractive installation
 ENV DEBIAN_FRONTEND=noninteractive
 
-# Install necessary packages (except nodejs/npm) and Docker CLI/Compose
+# Install necessary packages and Docker CLI
 RUN apt-get update && apt-get install -y --no-install-recommends \
     git \
     curl \
@@ -13,20 +13,25 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     ca-certificates \
     tzdata \
     gnupg \
-    lsb-release && \
-    mkdir -p /etc/apt/keyrings && \
+    lsb-release \
+    binfmt-support \
+    qemu-user-static && \
+    install -m 0755 -d /etc/apt/keyrings && \
     curl -fsSL https://download.docker.com/linux/debian/gpg | gpg --dearmor -o /etc/apt/keyrings/docker.gpg && \
-    echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/debian \
-    $(lsb_release -cs) stable" > /etc/apt/sources.list.d/docker.list && \
+    chmod a+r /etc/apt/keyrings/docker.gpg && \
+    echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/debian bookworm stable" > /etc/apt/sources.list.d/docker.list && \
     apt-get update && \
-    apt-get install -y --no-install-recommends \
-    docker-ce-cli \
-    docker-compose-plugin \
-    docker-compose && \
+    apt-get install -y --no-install-recommends docker-ce-cli && \
     rm -rf /var/lib/apt/lists/*
 
-# Install Node.js 21.x and npm from NodeSource
-RUN curl -fsSL https://deb.nodesource.com/setup_21.x | bash - \
+# Install Docker Buildx (latest stable release)
+RUN mkdir -p ~/.docker/cli-plugins/ \
+    && curl -sSL https://github.com/docker/buildx/releases/latest/download/buildx-linux-amd64 -o ~/.docker/cli-plugins/docker-buildx \
+    && chmod +x ~/.docker/cli-plugins/docker-buildx \
+    && docker buildx version || true
+
+# Install Node.js 22.x and npm from NodeSource
+RUN curl -fsSL https://deb.nodesource.com/setup_22.x | bash - \
     && apt-get install -y nodejs
 
 # Install Go tools and golang-migrate (v4.18.2) and gomock/mockgen

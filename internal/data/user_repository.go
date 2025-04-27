@@ -58,7 +58,9 @@ func (db *DB) GetByID(ctx context.Context, id string) (*models.User, error) {
 
 func (db *DB) Create(ctx context.Context, user *models.User) error {
 	_, err := db.Pool.Exec(ctx,
-		`INSERT INTO users (id, email, created_at) VALUES ($1, $2, $3)`,
+		`INSERT INTO users (id, email, created_at)
+		 VALUES ($1, $2, $3)
+		 ON CONFLICT (id) DO UPDATE SET email = EXCLUDED.email`,
 		user.ID, user.Email, user.CreatedAt,
 	)
 	return err

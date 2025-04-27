@@ -14,14 +14,16 @@ Inbox Whisperer is a suite of AI-powered tools designed to help users achieve an
 ## Running the Full Stack Locally
 
 - Copy `config.json.template` to `config.json` and fill in real values (never commit secrets).
-- Optionally create a `.env` file (see `.env.example`) to override API URLs, ports, etc for dev/staging/prod.
+- Create a `dev.env` file (see `.env.example` or the template provided) to override API URLs, ports, database credentials, and other secrets for local development. This file will be loaded automatically by `dev-deploy.sh` and Makefile workflows.
 - Use the Makefile:
-  - `make dev-up` brings up Postgres, backend, frontend, and applies all DB migrations (idempotent, canonical workflow).
+  - `make dev-deploy` is the canonical, idempotent workflow for local Kubernetes (kind) development. It will build, load, and deploy all components to your kind cluster, auto-detecting or creating the cluster as needed. This is the only script you should ever need for local kind development.
+  - `make dev-up` brings up Postgres, backend, frontend, and applies all DB migrations (idempotent, canonical workflow for Docker Compose-based development).
   - `make dev-down` brings down all containers and cleans up volumes.
 - All configuration is environment-variable driven (see Docker Compose and Makefile for details).
 
-- The frontend is in `web/`, backend in Go, and DB is Postgres. All are orchestrated via Docker Compose.
-- See `README.md` for more details and troubleshooting.
+- The only scripts you should run directly are in `scripts/dev-deploy.sh` (for kind) and Makefile targets. **Other scripts in `scripts/` are required for container startup (e.g., `wait-for-db.sh`) or database migrations, and should not be deleted.**
+- All additional documentation (feature specs, development guides, migration notes, etc.) is now located in the `/docs/` directory for clarity.
+- Main project README is at the project root as always.
 
 ## MVP Focus (2025-04-22)
 - Users sign up/log in via Google OAuth2

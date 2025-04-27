@@ -1,5 +1,6 @@
 {
   "compilerOptions": {
+    "composite": true,
     "esModuleInterop": true,
     "jsx": "react-jsx",
 
@@ -12,10 +13,10 @@
 
     /* Bundler mode */
     "moduleResolution": "bundler",
-    "allowImportingTsExtensions": true,
+
     "isolatedModules": true,
     "moduleDetection": "force",
-    "noEmit": true,
+    "noEmit": false,
 
     /* Linting */
     "strict": true,
@@ -24,5 +25,5 @@
     "noFallthroughCasesInSwitch": true,
     "noUncheckedSideEffectImports": true
   },
-  "include": ["src"]
+  "include": ["src", "src/api/generated/**/*"],
 }

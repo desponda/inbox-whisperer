@@ -8,6 +8,7 @@ import (
 	"os/signal"
 	"syscall"
 	"time"
+	"runtime"
 
 	"github.com/desponda/inbox-whisperer/internal/api"
 	"github.com/desponda/inbox-whisperer/internal/config"
@@ -31,6 +32,19 @@ func zerologMiddleware(next http.Handler) http.Handler {
 func main() {
 	cfg := mustLoadConfig()
 	setupLogger(cfg)
+
+	buildSHA := os.Getenv("GIT_COMMIT")
+	if buildSHA == "" {
+		buildSHA = "unknown"
+	}
+	versionMsg := "*** BACKEND VERSION INFO *** sha=" + buildSHA + " go=" + runtime.Version() + " time=" + time.Now().Format(time.RFC3339)
+	log.Info().Str("build_sha", buildSHA).
+		Str("go_version", runtime.Version()).
+		Time("startup_time", time.Now()).
+		Msg(versionMsg)
+	fmt.Println(versionMsg)
+	fmt.Fprintln(os.Stderr, versionMsg)
+
 	log.Info().Msg("Starting Inbox Whisperer server")
 
 	db := mustConnectDB(cfg)
@@ -108,6 +122,11 @@ func setupRouter(db *data.DB, cfg *config.AppConfig) http.Handler {
 		r.With(api.AuthMiddleware).Get("/{id}", h.GetUser)
 		r.With(api.AuthMiddleware).Put("/{id}", h.UpdateUser)
 		r.With(api.AuthMiddleware).Delete("/{id}", h.DeleteUser)
+	})
+
+	// Register /api/users/me endpoint for current user info
+	r.Route("/api", func(r chi.Router) {
+		r.With(api.AuthMiddleware).Get("/users/me", h.GetMe)
 	})
 
 	r.Get("/healthz", func(w http.ResponseWriter, r *http.Request) {

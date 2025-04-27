@@ -50,7 +50,6 @@ type GmailAPI interface {
 	UsersMessagesList(userID string) UsersMessagesListCall
 }
 
-
 type GmailService struct {
 	Repo     data.EmailMessageRepository
 	GmailAPI GmailAPI

@@ -53,8 +53,11 @@ func TestServerStartupWithValidConfig(t *testing.T) {
 }
 
 func TestServerStartupWithMissingConfig(t *testing.T) {
-	_, err := config.LoadConfig("/tmp/definitely-does-not-exist.json")
-	if err == nil {
-		t.Error("expected error for missing config file, got nil")
+	cfg, err := config.LoadConfig("/tmp/definitely-does-not-exist.json")
+	if err != nil {
+		t.Errorf("did not expect error for missing config file, got: %v", err)
+	}
+	if cfg == nil {
+		t.Error("expected non-nil config when falling back to env vars")
 	}
 }

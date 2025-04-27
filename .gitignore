@@ -1,63 +1,127 @@
-# Byte-compiled / optimized / DLL files
-__pycache__/
-*.py[cod]
-*$py.class
-
-# C extensions
-*.so
-
-# Distribution / packaging
-.Python
-build/
-develop-eggs/
-dist/
-downloads/
-eggs/
-.eggs/
-lib/
-lib64/
-parts/
-sdist/
-var/
-*.egg-info/
-.installed.cfg
-*.egg
-
-# PyInstaller
-#  Usually these files are written by a python script from a template
-#  before PyInstaller builds the exe, so as to inject date/other infos into it.
-*.manifest
-*.spec
-
-# Installer logs
-pip-log.txt
-pip-delete-this-directory.txt
-
-# Unit test / coverage reports
-htmlcov/
-.tox/
-.nox/
-.coverage
-.coverage.*
-
-# Inbox Whisperer secrets
-config.json
-
-# Node & React
-node_modules/
-build/
-dist/
-.env
-.env.*
+# General OS/editor junk
 .DS_Store
+*.log
+*.tmp
+*.swp
+*.swo
+*.bak
+*.old
+*.orig
+*.rej
+*.sublime-workspace
+*.sublime-project
+
+# Archives & binary blobs
+*.tgz
+*.gz
+*.zip
+*.tar
+*.tar.gz
+*.7z
+*.rar
+*.bin
+*.exe
+*.dll
+*.so
+*.dylib
+*.o
+*.obj
+*.a
+*.out
+
+# Node/Frontend
+node_modules/
+web/node_modules/
+web/dist/
+web/.next/
+web/.cache/
+web/.turbo/
+web/.eslintcache
+web/coverage/
+web/.env*
+web/.pnp*
+web/.parcel-cache/
+web/.svelte-kit/
+web/build/
+web/.output/
+web/.vercel/
+web/.netlify/
+
+# Go/Backend
+/bin/
+/build/
+/dist/
+/coverage/
+/testdata/
+*.test
+*.cover
+*.prof
+*.pb.go
+*.pb.gw.go
+*.pb.validate.go
+*.pb.json.go
+*.pb.swagger.go
+*.cue
+
+# VSCode/Devcontainer
+.vscode/
+
+# Misc
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+pnpm-debug.log*
 
-# Font cache/temp
-web/public/fonts/*.woff
-web/public/fonts/*.woff2
-web/public/fonts/*.ttf
+# Misc
+*.iml
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+*.tgz
+*.vscode/
+*.envrc
+
+# TypeScript build artifacts
+tsconfig.tsbuildinfo
+
+# TypeScript compiled output (but keep .ts files in /api/generated)
+**/*.d.ts
+**/*.js
+!web/src/api/generated/**/*.ts
+
+# Docker
+.dockerignore
+
+# Credentials and Secrets
+secrets.*
+*.secrets.*
+*.credentials.*
+*.token
+*.tokens
+*.cert
+*.private
+*.pem
+*.p12
+*.key
+*.crt
+*.csr
+*.jks
+*.keystore
+*.pfx
+*.p12
+*.db
+*.sqlite
+*.sqlite3
+.env*
+config.json
+
+# Ignore backup files
+*~
+*.bak
+
 
 # Local dev
 *.local
@@ -70,53 +134,6 @@ coverage.xml
 .hypothesis/
 .pytest_cache/
 
-# Translations
-*.mo
-*.pot
-
-# Django stuff:
-*.log
-local_settings.py
-db.sqlite3
-
-# Flask stuff:
-instance/
-.webassets-cache
-
-# Scrapy stuff:
-.scrapy
-
-# Sphinx documentation
-docs/_build/
-
-# PyBuilder
-.target/
-
-# Jupyter Notebook
-.ipynb_checkpoints
-
-# IPython
-profile_default/
-ipython_config.py
-
-# pyenv
-.python-version
-
-# pipenv
-Pipfile.lock
-
-# poetry
-poetry.lock
-
-# PEP 582; used by e.g. github.com/David-OConnor/pyflow
-__pypackages__/
-
-# Celery stuff
-celerybeat-schedule
-celerybeat.pid
-
-# SageMath parsed files
-*.sage.py
 
 # Environments
 .env
@@ -159,20 +176,9 @@ node_modules/
 *.local
 *.log
 
-# Migration and DB artifacts
-migrate
-migrate.linux-amd64*
-*.db
-pgdata/
-/inbox-whisperer_pgdata/
-/inbox-whisperer_default/
-
 # Build and dist
 /dist/
 /build/
-
-# Scripts and binaries
-scripts/install-migrate.sh
 
 # Ignore database reset/reference schema
 schema.sql
@@ -185,3 +191,4 @@ schema.sql
 Thumbs.db
 .windsurfrules
 coverage.out
+dev.env

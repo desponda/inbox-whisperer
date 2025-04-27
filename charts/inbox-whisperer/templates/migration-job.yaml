@@ -1,0 +1,24 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: migration-job
+  labels:
+    app: inbox-whisperer
+
+spec:
+  template:
+    spec:
+      restartPolicy: OnFailure
+      containers:
+        - name: migration
+          image: inbox-whisperer-migrate:latest
+          imagePullPolicy: Never
+          env:
+            - name: PGPASSWORD
+              value: "changeme" # Use secret in prod
+            - name: POSTGRES_USER
+              value: "inboxwhisperer"
+            - name: POSTGRES_DB
+              value: "inboxwhisperer"
+            - name: POSTGRES_HOST
+              value: "db"

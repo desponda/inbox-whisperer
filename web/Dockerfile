@@ -1,5 +1,5 @@
 # Frontend Dockerfile
-FROM node:21-alpine3.19 as build
+FROM node:22-alpine as build
 WORKDIR /app
 COPY package*.json ./
 RUN npm install

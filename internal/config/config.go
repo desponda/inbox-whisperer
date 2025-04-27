@@ -2,8 +2,8 @@ package config
 
 import (
 	"encoding/json"
-	"os"
 	"fmt"
+	"os"
 )
 
 type GoogleConfig struct {
@@ -17,9 +17,10 @@ type OpenAIConfig struct {
 }
 
 type ServerConfig struct {
-	Port     string `json:"port"`
-	DBUrl    string `json:"db_url"`
-	LogLevel string `json:"log_level"` // e.g. "info", "debug", "warn", "error"
+	Port        string `json:"port"`
+	DBUrl       string `json:"db_url"`
+	LogLevel    string `json:"log_level"` // e.g. "info", "debug", "warn", "error"
+	FrontendURL string `json:"frontend_url"`
 }
 
 type AppConfig struct {
@@ -70,4 +71,3 @@ func LoadConfig(path string) (*AppConfig, error) {
 	}
 	return &cfg, nil
 }
-

@@ -1,0 +1,23 @@
+/* Inter font: Regular, Medium, Bold weights */
+@font-face {
+  font-family: 'Inter';
+  font-style: normal;
+  font-weight: 400;
+  src: url('https://fonts.gstatic.com/s/inter/v12/UcCO3FwrK5dHZ6UuU8kz.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Inter';
+  font-style: normal;
+  font-weight: 500;
+  src: url('https://fonts.gstatic.com/s/inter/v12/UcCO3FwrK5dHZ6UuU8kz.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Inter';
+  font-style: normal;
+  font-weight: 700;
+  src: url('https://fonts.gstatic.com/s/inter/v12/UcCO3FwrK5dHZ6UuU8kz.woff2') format('woff2');
+}
+
+body, html {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;
+}

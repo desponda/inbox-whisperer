@@ -1,8 +1,9 @@
 -- Inbox Whisperer: Consolidated initial schema migration (2025-04-22)
 
 -- 1. Users
+-- TEMPORARY: Using TEXT for user id (Google user id) for development only. See docs/features/future/identity-refactor.md for tech debt plan.
 CREATE TABLE IF NOT EXISTS users (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    id TEXT PRIMARY KEY,
     email VARCHAR(255) UNIQUE NOT NULL,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     deactivated BOOLEAN NOT NULL DEFAULT FALSE
@@ -18,7 +19,7 @@ CREATE TABLE IF NOT EXISTS categories (
 -- 3. Emails (Gmail, provider-agnostic)
 CREATE TABLE IF NOT EXISTS emails (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    user_id UUID REFERENCES users(id) ON DELETE CASCADE,
+    user_id TEXT REFERENCES users(id) ON DELETE CASCADE,
     gmail_id VARCHAR(128) NOT NULL,
     subject TEXT,
     sender TEXT,
@@ -43,7 +44,7 @@ CREATE TABLE IF NOT EXISTS email_category_assignments (
 -- 5. ActionLogs
 CREATE TABLE IF NOT EXISTS action_logs (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    user_id UUID REFERENCES users(id) ON DELETE SET NULL,
+    user_id TEXT REFERENCES users(id) ON DELETE SET NULL,
     action VARCHAR(64) NOT NULL,
     target_type VARCHAR(64),
     target_id INTEGER,
