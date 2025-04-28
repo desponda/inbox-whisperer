@@ -6,13 +6,13 @@ import '@testing-library/jest-dom';
 
 // Mock TextEncoder/TextDecoder
 class TextEncoderMock {
-  encode(str: string): Uint8Array {
+  encode(): Uint8Array {
     return new Uint8Array([]);
   }
 }
 
 class TextDecoderMock {
-  decode(arr: Uint8Array): string {
+  decode(): string {
     return '';
   }
 }

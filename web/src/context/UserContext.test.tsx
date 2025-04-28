@@ -1,6 +1,5 @@
 import '@testing-library/jest-dom';
-import React from 'react';
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, fireEvent } from '@testing-library/react';
 import { UserProvider, useUser, clearAllAuth } from './UserContext';
 import { MemoryRouter } from 'react-router-dom';
 
@@ -134,6 +133,37 @@ describe('UserContext', () => {
     // Should not make fetch request
     await waitFor(() => {
       expect(mockFetch).not.toHaveBeenCalled();
+    });
+  });
+
+  it('logs out and resets user context', async () => {
+    const mockUser = { id: '123', email: 'test@example.com' };
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: () => Promise.resolve(mockUser),
+    });
+    const TestComponent = () => {
+      const { user, logout } = useUser();
+      return (
+        <div>
+          <span>{user?.email || 'No user'}</span>
+          <button onClick={logout}>Logout</button>
+        </div>
+      );
+    };
+    render(
+      <MemoryRouter>
+        <UserProvider>
+          <TestComponent />
+        </UserProvider>
+      </MemoryRouter>
+    );
+    await waitFor(() => {
+      expect(screen.getByText('test@example.com')).toBeInTheDocument();
+    });
+    fireEvent.click(screen.getByText('Logout'));
+    await waitFor(() => {
+      expect(window.location.href).toBe('/login');
     });
   });
 });

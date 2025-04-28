@@ -2,6 +2,7 @@ import React from 'react';
 import '/fonts/inter.css';
 import { useUser } from '../context/UserContext';
 import { Link } from 'react-router-dom';
+import LogoutButton from '../components/LogoutButton';
 
 // Mocked email data for preview
 const MOCK_EMAILS = [
@@ -64,6 +65,7 @@ const Dashboard: React.FC = () => {
           <Link to="/dashboard" className="text-base font-bold text-accent">
             Dashboard
           </Link>
+          <LogoutButton />
         </div>
       </nav>
       {/* DASHBOARD HEADER */}
@@ -72,7 +74,7 @@ const Dashboard: React.FC = () => {
           {loading ? 'Loading…' : user ? `Welcome, ${user.email}` : 'Welcome!'}
         </h1>
         <p className="text-lg text-gray-300 mb-6">
-          Here’s a preview of your inbox, prioritized by AI.
+          Here's a preview of your inbox, prioritized by AI.
         </p>
       </section>
       {/* INBOX PREVIEW */}

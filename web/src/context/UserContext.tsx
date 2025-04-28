@@ -1,12 +1,15 @@
-import React, { createContext, useContext, useEffect, useState, ReactNode, useCallback, useMemo } from 'react';
+import React, { createContext, useContext, ReactNode, useCallback, useMemo } from 'react';
+import useSWR from 'swr';
+import { getUser } from '../api/generated/user/user';
 import { components } from '../api/types';
 
 export type User = components['schemas']['User'] | null;
 
 interface UserContextValue {
   user: User;
-  setUser: (user: User) => void;
   loading: boolean;
+  error: any;
+  mutate: () => void;
   logout: () => void;
 }
 
@@ -25,114 +28,40 @@ export function clearAllAuth() {
   sessionStorage.clear();
 }
 
-// Custom error for API responses
-class ApiError extends Error {
-  constructor(public status: number, message: string) {
-    super(message);
-    this.name = 'ApiError';
-  }
-}
-
-// Type guard for user data
-function isValidUserData(data: unknown): data is components['schemas']['User'] {
-  return data !== null && 
-    typeof data === 'object' && 
-    'id' in data && 
-    typeof data['id'] === 'string';
-}
-
 export const UserProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-  const [user, setUser] = useState<User>(null);
-  const [loading, setLoading] = useState(true);
-  const [isRedirecting, setIsRedirecting] = useState(false);
-
-  // Handle session expiry
-  const handleSessionExpiry = useCallback((): void => {
-    setIsRedirecting(true);
-    clearAllAuth();
-    const baseUrl = window.location.origin;
-    window.location.href = `${baseUrl}/login?reason=session_expired`;
-  }, []);
-
-  // Fetch and validate user data
-  const fetchUserData = useCallback(async (): Promise<User> => {
-    const res = await fetch('/api/users/me', {
-      credentials: 'include',
-      headers: {
-        'Accept': 'application/json',
-      },
-    });
-
-    if (!res.ok) {
-      throw new ApiError(res.status, `HTTP error! status: ${res.status}`);
-    }
-
-    const data = await res.json();
-    
-    if (!isValidUserData(data)) {
-      throw new Error('Invalid user data received');
-    }
-
-    return data;
-  }, []);
-
-  // Fetch user effect
-  useEffect(() => {
-    // Skip fetch if on login page or already redirecting
-    if (window.location.pathname === '/login' || isRedirecting) {
-      setLoading(false);
-      return;
-    }
-
-    let mounted = true;
-
-    // Main fetch user function
-    const fetchUser = async (): Promise<void> => {
-      if (!mounted) return;
-      setLoading(true);
-      
-      try {
-        const userData = await fetchUserData();
-        if (mounted) setUser(userData);
-      } catch (error) {
-        if (!mounted) return;
-
-        // Handle specific error types
-        if (error instanceof ApiError && error.status === 401) {
-          handleSessionExpiry();
-          return;
-        }
-
-        // Log other errors but don't expose to user
-        console.error('Error fetching user:', error);
-        setUser(null);
-      } finally {
-        // Only set loading false if we haven't redirected and component is mounted
-        if (!isRedirecting && mounted) {
-          setLoading(false);
-        }
+  // Use SWR for user session state
+  const fetchUser = async () => {
+    try {
+      const res = await getUser().getApiUsersMe({ withCredentials: true });
+      return res.data;
+    } catch (error: any) {
+      if (error?.response?.status === 401) {
+        // Session expired, clear auth, but do not redirect
+        clearAllAuth();
+        return null;
       }
-    };
+      throw error;
+    }
+  };
 
-    void fetchUser();
-
-    // Cleanup function to prevent state updates on unmounted component
-    return () => {
-      mounted = false;
-    };
-  }, [isRedirecting, fetchUserData, handleSessionExpiry]);
+  const { data: user, error, isLoading, mutate } = useSWR('/api/users/me', fetchUser, {
+    revalidateOnFocus: true,
+    shouldRetryOnError: false,
+  });
 
   const logout = useCallback(() => {
     clearAllAuth();
-    setUser(null);
-  }, []);
+    mutate();
+    window.location.href = '/login';
+  }, [mutate]);
 
   const contextValue = useMemo(() => ({
-    user,
-    setUser,
-    loading,
+    user: user ?? null,
+    loading: isLoading,
+    error,
+    mutate,
     logout,
-  }), [user, loading, logout]);
+  }), [user, isLoading, error, mutate, logout]);
 
   return (
     <UserContext.Provider value={contextValue}>
