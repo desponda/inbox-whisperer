@@ -60,11 +60,54 @@ type EmailMessage struct {
 Responsible for selecting/instantiating the correct provider(s) for a user/account at runtime:
 
 ```go
-// EmailProviderFactory returns the correct provider for a user/account
-// (can aggregate from multiple providers)
-type EmailProviderFactory interface {
-    // Returns all providers for a user
-    ProvidersForUser(ctx context.Context, userID string) ([]EmailProvider, error)
+// ProviderFactoryFunc is a function that returns a Provider given a Config
+type ProviderFactoryFunc func(cfg Config) (Provider, error)
+
+// Factory manages provider registration and user-provider links
+type Factory struct {
+    providers map[Type]ProviderFactoryFunc
+    userLinks map[string][]Config // userID -> []Config
+}
+
+// NewProviderFactory creates a new provider factory
+func NewProviderFactory() *Factory {
+    return &Factory{
+        providers: make(map[Type]ProviderFactoryFunc),
+        userLinks: make(map[string][]Config),
+    }
+}
+
+// RegisterProvider registers a provider factory for a given type
+func (f *Factory) RegisterProvider(t Type, factory ProviderFactoryFunc) {
+    f.providers[t] = factory
+}
+
+// LinkProvider links a user to a provider config
+func (f *Factory) LinkProvider(userID string, cfg Config) {
+    f.userLinks[userID] = append(f.userLinks[userID], cfg)
+}
+
+// ProviderForUser returns a Provider for a user and provider type
+func (f *Factory) ProviderForUser(ctx context.Context, userID string, t Type) (Provider, error) {
+    cfgs, ok := f.userLinks[userID]
+    if !ok {
+        return nil, ErrNotFound
+    }
+    for _, cfg := range cfgs {
+        if cfg.Type == t {
+            factory, ok := f.providers[t]
+            if !ok {
+                return nil, errors.New("provider factory not registered")
+            }
+            return factory(cfg)
+        }
+    }
+    return nil, ErrNotFound
+}
+
+// UserLinks returns the linked provider configs for a user
+func (f *Factory) UserLinks(userID string) []Config {
+    return f.userLinks[userID]
 }
 ```
 

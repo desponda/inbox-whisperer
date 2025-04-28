@@ -5,213 +5,292 @@ import (
 	"crypto/rand"
 	"encoding/base64"
 	"encoding/json"
+	"errors"
+	"fmt"
 	"net/http"
-	"strings"
 	"time"
 
+	"github.com/desponda/inbox-whisperer/internal/auth/service/oauth"
+	"github.com/desponda/inbox-whisperer/internal/auth/session"
 	"github.com/desponda/inbox-whisperer/internal/config"
 	"github.com/desponda/inbox-whisperer/internal/data"
-	"github.com/desponda/inbox-whisperer/internal/models"
-	"github.com/desponda/inbox-whisperer/internal/session"
 	"github.com/go-chi/chi/v5"
+	"github.com/google/uuid"
 	"github.com/rs/zerolog/log"
 	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/google"
+	goauth2 "google.golang.org/api/oauth2/v2"
 )
 
-// AuthHandler holds the OAuth2 config and provides HTTP handlers for auth endpoints
-// (In production, you would inject user/session/token storage here as well)
-type AuthHandler struct {
-	OAuthConfig  *oauth2.Config
-	UserTokens   data.UserTokenRepository
-	FrontendURL  string
+const (
+	minStateLength    = 32
+	maxStateLength    = 64
+	maxCodeLength     = 1024 // OAuth2 code length limit
+	defaultTimeout    = 10 * time.Second
+	googleUserInfoURL = "https://www.googleapis.com/oauth2/v2/userinfo"
+	googleJWKSURL     = "https://www.googleapis.com/oauth2/v3/certs"
+)
+
+var (
+	ErrInvalidState   = errors.New("invalid or expired session state")
+	ErrInvalidCode    = errors.New("invalid or missing authorization code")
+	ErrTokenExchange  = errors.New("failed to exchange authorization code for token")
+	ErrUserInfo       = errors.New("failed to retrieve user information")
+	ErrInvalidEmail   = errors.New("invalid email format")
+	ErrInvalidIDToken = errors.New("invalid ID token")
+)
+
+// OAuthService defines the interface for OAuth operations
+type OAuthService interface {
+	ExchangeCodeForToken(ctx context.Context, code string) (*oauth2.Token, *goauth2.Userinfo, error)
+	SaveUserAndToken(ctx context.Context, userInfo *goauth2.Userinfo, token *oauth2.Token) error
+	GetDB() interface{}
 }
 
-// NewAuthHandler creates a new AuthHandler with the given app config
-func NewAuthHandler(cfg *config.AppConfig, userTokens data.UserTokenRepository) *AuthHandler {
-	defaultGoogleScopes := []string{"https://www.googleapis.com/auth/gmail.readonly", "openid", "profile", "email"}
+// AuthHandler handles HTTP requests for authentication
+type AuthHandler struct {
+	oauthConfig    *oauth2.Config
+	oauthService   OAuthService
+	frontendURL    string
+	sessionManager session.Manager
+}
+
+// NewAuthHandler creates a new AuthHandler
+func NewAuthHandler(cfg *config.AppConfig, userTokens data.UserTokenRepository, sessionManager session.Manager) *AuthHandler {
+	config := &oauth2.Config{
+		ClientID:     cfg.Google.ClientID,
+		ClientSecret: cfg.Google.ClientSecret,
+		RedirectURL:  cfg.Google.RedirectURL,
+		Scopes:       []string{"https://www.googleapis.com/auth/gmail.readonly", "openid", "profile", "email"},
+		Endpoint:     google.Endpoint,
+	}
+
 	return &AuthHandler{
-		OAuthConfig: &oauth2.Config{
-			ClientID:     cfg.Google.ClientID,
-			ClientSecret: cfg.Google.ClientSecret,
-			RedirectURL:  cfg.Google.RedirectURL,
-			Scopes:       defaultGoogleScopes,
-			Endpoint:     google.Endpoint,
-		},
-		UserTokens:  userTokens,
-		FrontendURL: cfg.Server.FrontendURL,
+		oauthConfig:    config,
+		oauthService:   oauth.NewService(config, userTokens),
+		frontendURL:    cfg.Server.FrontendURL,
+		sessionManager: sessionManager,
 	}
 }
 
 // HandleLogin starts the OAuth2 flow
 func (h *AuthHandler) HandleLogin(w http.ResponseWriter, r *http.Request) {
-	// Generate a random state token for CSRF protection
-	state := generateRandomState(32)
-
-	// Log state generation and session/cookie info (do not log secrets)
-	// Cookie check is no longer needed since we're not using session_id
-	// log.Debug().Str("handler", "HandleLogin").Str("generated_state", state).Msg("Generated OAuth state and preparing to store in session")
-
-	session.SetSessionValue(w, r, "oauth_state", state)
-	// log.Debug().Str("handler", "HandleLogin").Str("stored_state", state).Msg("Stored OAuth state in session")
-
-	url := h.OAuthConfig.AuthCodeURL(state, oauth2.AccessTypeOffline)
-	// log.Debug().Str("handler", "HandleLogin").Str("redirect_url", url).Msg("Redirecting to OAuth provider")
-
-	http.Redirect(w, r, url, http.StatusFound)
-}
-
-// generateRandomState generates a secure random string for OAuth2 state
-func generateRandomState(length int) string {
-	b := make([]byte, length)
-	if _, err := rand.Read(b); err != nil {
-		return "state-token-fallback"
+	state, err := generateRandomState(minStateLength)
+	if err != nil {
+		log.Error().Err(err).Msg("Failed to generate state token")
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
 	}
-	return base64.URLEncoding.EncodeToString(b)
+
+	session, err := h.sessionManager.Start(w, r)
+	if err != nil || session == nil {
+		log.Error().Err(err).Msg("Failed to start session")
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
+
+	session.SetValue("oauth_state", state)
+	session.SetValue("state_created_at", time.Now().UTC().Format(time.RFC3339))
+	if err := h.sessionManager.Store().Save(r.Context(), session); err != nil {
+		log.Error().Err(err).Msg("Failed to save session")
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
+
+	url := h.oauthConfig.AuthCodeURL(state, oauth2.AccessTypeOffline)
+	http.Redirect(w, r, url, http.StatusTemporaryRedirect)
 }
 
 // HandleCallback handles the OAuth2 redirect from Google
 func (h *AuthHandler) HandleCallback(w http.ResponseWriter, r *http.Request) {
-	// log.Debug().Str("handler", "HandleCallback").Msg("Received OAuth callback request")
-
 	ctx := r.Context()
-	code := r.URL.Query().Get("code")
-	if code == "" {
-		// log.Debug().Str("handler", "HandleCallback").Msg("Missing code in callback URL")
-		http.Error(w, "missing code", http.StatusBadRequest)
-		return
-	}
 
+	// Log all query params
+	log.Debug().
+		Str("path", r.URL.Path).
+		Str("state", r.URL.Query().Get("state")).
+		Str("code", r.URL.Query().Get("code")).
+		Msg("OAuth callback received")
+
+	// 1. Validate state parameter (CSRF protection)
 	state := r.URL.Query().Get("state")
-	expectedState := session.GetSessionValue(r, "oauth_state")
-	// log.Debug().Str("handler", "HandleCallback").Str("received_state", state).Str("expected_state", expectedState).Msg("Comparing OAuth state values from callback and session")
-	if state == "" || expectedState == "" || state != expectedState {
-		log.Warn().Str("handler", "HandleCallback").Str("received_state", state).Str("expected_state", expectedState).Msg("Invalid or missing state parameter in callback")
-		session.ClearSession(w, r)
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusBadRequest)
-		_ = json.NewEncoder(w).Encode(map[string]string{
-			"error":   "invalid_state",
-			"message": "Session expired or invalid. Please try logging in again.",
-		})
+	if state == "" {
+		log.Warn().Msg("Missing state parameter")
+		h.handleAuthError(w, fmt.Errorf("missing state parameter"), http.StatusBadRequest)
 		return
 	}
 
-	tok, err := exchangeCodeForToken(h, ctx, code)
-	if err != nil {
-		log.Error().Str("handler", "HandleCallback").Err(err).Msg("Token exchange failed")
-		http.Error(w, "token exchange failed: "+err.Error(), http.StatusInternalServerError)
+	// 2. Get and validate session
+	session, err := h.sessionManager.Start(w, r)
+	if err != nil || session == nil {
+		log.Error().Err(err).Msg("Failed to get session")
+		h.handleAuthError(w, fmt.Errorf("invalid session"), http.StatusInternalServerError)
 		return
 	}
 
-	userID, email, err := getUserIDAndEmail(ctx, tok)
-	if err != nil {
-		log.Error().Str("handler", "HandleCallback").Err(err).Msg("Failed to get user ID and email from token")
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+	// Log session values for debugging
+	log.Debug().
+		Interface("session_values", session.Values()).
+		Msg("Session values at callback")
+
+	// 3. Validate state against session
+	if err := h.validateState(w, r, session); err != nil {
+		log.Warn().Err(err).Msg("State validation failed")
+		h.handleAuthError(w, err, http.StatusBadRequest)
 		return
 	}
 
-	// log.Debug().Str("handler", "HandleCallback").Str("user_id", userID).Str("email", email).Msg("User authenticated, persisting user and token")
-	ensureUserExists(ctx, h.UserTokens, userID, email, tok)
-
-	err = h.UserTokens.SaveUserToken(ctx, userID, tok)
-	if err != nil {
-		log.Error().Str("handler", "HandleCallback").Str("user_id", userID).Err(err).Msg("Failed to persist user token")
-		http.Error(w, "failed to persist user token", http.StatusInternalServerError)
+	// 4. Validate authorization code
+	code := r.URL.Query().Get("code")
+	if err := h.validateAuthCode(code); err != nil {
+		log.Warn().Err(err).Msg("Invalid authorization code")
+		h.handleAuthError(w, fmt.Errorf("failed to exchange code for token"), http.StatusBadRequest)
 		return
 	}
 
-	// log.Debug().Str("handler", "HandleCallback").Str("user_id", userID).Msg("Setting session token and redirecting to frontend")
-	setSessionToken(w, r, userID, tok.AccessToken)
-	http.Redirect(w, r, h.FrontendURL, http.StatusFound)
-}
-
-func getUserIDAndEmail(ctx context.Context, tok *oauth2.Token) (string, string, error) {
-	userID, err := fetchGoogleUserID(ctx, tok, "https://www.googleapis.com/oauth2/v2/userinfo")
+	// 5. Exchange code for token and get user info
+	tok, userInfo, err := h.oauthService.ExchangeCodeForToken(ctx, code)
 	if err != nil {
-		return "", "", err
-	}
-	email := userID
-	if sep := '|'; len(userID) > 0 && !strings.ContainsAny(string(userID[0]), "[{(<") {
-		if before, after, found := strings.Cut(userID, string(sep)); found {
-			userID = before
-			email = after
+		log.Error().
+			Err(err).
+			Str("code", code).
+			Msg("Token exchange failed")
+		if errors.Is(err, oauth.ErrTokenExchange) {
+			h.handleAuthError(w, fmt.Errorf("failed to exchange code for token"), http.StatusBadRequest)
+			return
 		}
+		h.handleAuthError(w, err, http.StatusInternalServerError)
+		return
 	}
-	return userID, email, nil
+
+	// Log token and user info for debugging (be careful with sensitive info in production)
+	log.Debug().
+		Interface("token", tok).
+		Interface("userInfo", userInfo).
+		Msg("Token and user info received from Google")
+
+	// 6. Save user and token
+	if err := h.oauthService.SaveUserAndToken(ctx, userInfo, tok); err != nil {
+		log.Error().Err(err).Msg("Failed to save user/token")
+		h.handleAuthError(w, err, http.StatusInternalServerError)
+		return
+	}
+
+	// Look up our UUID for this Google user
+	var userID uuid.UUID
+	db := h.oauthService.GetDB()
+	if db == nil {
+		h.handleAuthError(w, errors.New("internal server error: cannot get DB"), http.StatusInternalServerError)
+		return
+	}
+
+	row := db.(interface {
+		QueryRow(context.Context, string, ...interface{}) interface{}
+	}).QueryRow(ctx, `SELECT user_id FROM user_identities WHERE provider = $1 AND provider_user_id = $2`, "google", userInfo.Id)
+	if row == nil {
+		h.handleAuthError(w, errors.New("internal server error: cannot find user identity after save"), http.StatusInternalServerError)
+		return
+	}
+
+	if err := row.(interface{ Scan(...interface{}) error }).Scan(&userID); err != nil {
+		h.handleAuthError(w, errors.New("internal server error: cannot find user identity after save"), http.StatusInternalServerError)
+		return
+	}
+
+	// 7. Update session
+	session.SetUserID(userID.String())
+	if err := h.sessionManager.Store().Save(ctx, session); err != nil {
+		log.Error().Err(err).Msg("Failed to update session")
+		h.handleAuthError(w, err, http.StatusInternalServerError)
+		return
+	}
+
+	// 8. Redirect to frontend
+	http.Redirect(w, r, h.frontendURL, http.StatusFound)
 }
 
-func ensureUserExists(ctx context.Context, userTokens data.UserTokenRepository, userID, email string, tok *oauth2.Token) {
-	db, ok := userTokens.(interface {
-		Create(context.Context, *models.User) error
-	})
+// Helper functions
+
+func generateRandomState(length int) (string, error) {
+	if length < minStateLength || length > maxStateLength {
+		return "", fmt.Errorf("state length must be between %d and %d", minStateLength, maxStateLength)
+	}
+
+	b := make([]byte, length)
+	if _, err := rand.Read(b); err != nil {
+		return "", fmt.Errorf("failed to generate random state: %w", err)
+	}
+	return base64.URLEncoding.EncodeToString(b), nil
+}
+
+func (h *AuthHandler) validateAuthCode(code string) error {
+	if code == "" || len(code) > maxCodeLength {
+		return ErrInvalidCode
+	}
+	// Removed character validation: Google OAuth codes can contain / and other chars
+	return nil
+}
+
+func (h *AuthHandler) validateState(w http.ResponseWriter, r *http.Request, session session.Session) error {
+	state := r.URL.Query().Get("state")
+	expectedState, ok := session.GetValue("oauth_state")
+	if !ok || expectedState.(string) != state {
+		if err := h.sessionManager.Destroy(w, r); err != nil {
+			log.Error().Err(err).Msg("Failed to destroy invalid session")
+		}
+		return fmt.Errorf("invalid state parameter")
+	}
+
+	createdAtRaw, ok := session.GetValue("state_created_at")
 	if !ok {
-		return
+		return fmt.Errorf("invalid state parameter")
 	}
-	if email == userID && tok != nil {
-		client := oauth2.NewClient(ctx, oauth2.StaticTokenSource(tok))
-		resp, err := client.Get("https://www.googleapis.com/oauth2/v2/userinfo")
-		if err == nil && resp.StatusCode == 200 {
-			var profile struct {
-				Email string `json:"email"`
-			}
-			if err := json.NewDecoder(resp.Body).Decode(&profile); err == nil && profile.Email != "" {
-				email = profile.Email
-			}
-			resp.Body.Close()
+
+	var createdAt time.Time
+	switch v := createdAtRaw.(type) {
+	case time.Time:
+		createdAt = v
+	case string:
+		var err error
+		createdAt, err = time.Parse(time.RFC3339, v)
+		if err != nil {
+			return fmt.Errorf("invalid state parameter: %w", err)
 		}
+	default:
+		return fmt.Errorf("invalid state parameter type")
 	}
-	err := db.Create(ctx, &models.User{
-		ID:        userID,
-		Email:     email,
-		CreatedAt: time.Now().UTC(),
-	})
-	if err != nil {
-		log.Error().Str("user_id", userID).Str("email", email).Err(err).Msg("Failed to create user in ensureUserExists")
-	} else {
-		// log.Info().Str("user_id", userID).Str("email", email).Msg("User created successfully in ensureUserExists")
+
+	if time.Since(createdAt) > 5*time.Minute {
+		if err := h.sessionManager.Destroy(w, r); err != nil {
+			log.Error().Err(err).Msg("Failed to destroy expired session")
+		}
+		return fmt.Errorf("state parameter has expired")
 	}
+
+	return nil
 }
 
-func setSessionToken(w http.ResponseWriter, r *http.Request, userID, token string) {
-	// Only set the session; do not write a response body
-	session.SetSession(w, r, userID, token)
-	// No response body here; the redirect will be handled by the caller
-}
+func (h *AuthHandler) handleAuthError(w http.ResponseWriter, err error, status int) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(status)
 
-// exchangeCodeForToken exchanges an OAuth2 code for a token
-var exchangeCodeForToken = func(h *AuthHandler, ctx context.Context, code string) (*oauth2.Token, error) {
-	tok, err := h.OAuthConfig.Exchange(ctx, code)
+	errMsg := "An error occurred during authentication"
 	if err != nil {
-		return nil, err
+		errMsg = err.Error()
 	}
-	return tok, nil
-}
 
-// fetchGoogleUserID fetches the user's Google ID or email from the UserInfo endpoint
-var fetchGoogleUserID = func(ctx context.Context, tok *oauth2.Token, userinfoURL string) (string, error) {
-	client := oauth2.NewClient(ctx, oauth2.StaticTokenSource(tok))
-	resp := struct {
-		ID    string `json:"id"`
-		Email string `json:"email"`
-	}{}
-	res, err := client.Get(userinfoURL)
-	if err != nil {
-		return "", err
+	response := map[string]string{
+		"error": errMsg,
 	}
-	defer res.Body.Close()
-	if err := json.NewDecoder(res.Body).Decode(&resp); err != nil {
-		return "", err
+
+	if err := json.NewEncoder(w).Encode(response); err != nil {
+		log.Error().Err(err).Msg("Failed to encode error response")
 	}
-	if resp.ID != "" {
-		return resp.ID, nil
-	}
-	return resp.Email, nil
 }
 
 // RegisterAuthRoutes adds the auth endpoints to the router
-func RegisterAuthRoutes(r chi.Router, cfg *config.AppConfig, userTokens data.UserTokenRepository) {
-	h := NewAuthHandler(cfg, userTokens)
-	r.Get("/api/auth/login", h.HandleLogin)
-	r.Get("/api/auth/callback", h.HandleCallback)
+func RegisterAuthRoutes(r chi.Router, cfg *config.AppConfig, userTokens data.UserTokenRepository, sessionManager session.Manager) {
+	h := NewAuthHandler(cfg, userTokens, sessionManager)
+	r.Get("/login", h.HandleLogin)
+	r.Get("/callback", h.HandleCallback)
 }

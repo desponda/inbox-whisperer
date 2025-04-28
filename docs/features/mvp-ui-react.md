@@ -36,7 +36,7 @@ This document tracks the implementation plan and checklist for the Inbox Whisper
 ### 2. API Client
 - [x] Ensure OpenAPI spec is up-to-date for all backend endpoints.
 - [x] Use openapi-generator or similar to auto-generate a TypeScript client (present in src/api/generated).
-- [ ] Integrate the generated client for all API calls (in progress; some manual fetches remain).
+- [x] Integrate the generated client for all API calls (in progress; some manual fetches remain).
 
 ---
 
@@ -74,6 +74,7 @@ This document tracks the implementation plan and checklist for the Inbox Whisper
 - [ ] Core UI screens implemented
 - [ ] Codebase fully linted and tested
 - [ ] Makefile and developer scripts updated for fullstack workflow
+- [x] Backend: Add sessionCookieSecure flag to values.yaml, config.json, and Go config. Session manager now uses this flag for all cookies. Enables local dev over HTTP (set to false) and should be true in production.
 
 ## Developer Experience
 
@@ -81,3 +82,83 @@ This document tracks the implementation plan and checklist for the Inbox Whisper
 
 ---
 *This feature is active as of 2025-04-23. Update as progress is made.*
+
+### Frontend Session Management Refactor (2025-XX-XX)
+
+#### Background & Best Practices
+- Backend now uses secure, httpOnly cookies for session management (stateless, server-validated).
+- Frontend should treat the session as opaque: no JWT parsing, no localStorage for tokens, always use `credentials: 'include'` for API calls.
+- The canonical source of user/session state is `/api/users/me`.
+- All protected routes/components should rely on a single React context for user/session state.
+- Use SWR for caching and revalidation of user/session state (already installed).
+- Logout should clear all browser storage and cookies, and redirect to login.
+- All API calls should use the generated OpenAPI client.
+
+#### Checklist: Frontend Session Management Refactor
+
+1. **User Context & Session State**
+   - [x] Refactor `UserContext` to use SWR for `/api/users/me` instead of manual fetch.
+   - [x] Ensure all session state is derived from the SWR cache.
+   - [x] Remove any manual fetches for user/session state elsewhere in the app.
+
+2. **API Client Integration**
+   - [x] Replace all manual fetches with the generated OpenAPI client (especially for `/api/users/me`).
+   - [x] Ensure all API calls use `withCredentials`/`credentials: 'include'` as needed.
+
+3. **Authentication Flow**
+   - [x] Ensure login flow redirects to `/api/auth/login` and handles callback via `/auth/callback`.
+   - [x] On successful callback, revalidate user context/session state (ensure SWR mutate is called after callback if not already present).
+   - [x] On 401 from any API call, trigger session expiry logic (clear state, redirect to login).
+
+4. **Protected Routes**
+   - [x] Ensure all protected pages/components use `ProtectedRoute` and rely on `UserContext` for auth state.
+   - [x] Show a loading spinner while session state is being determined.
+
+5. **Logout**
+   - [x] Implement a logout button/component that:
+     - [x] Clears all local/session storage and cookies.
+     - [x] Resets user context and redirects to login.
+     - [ ] Calls a backend logout endpoint (if available; not required for MVP).
+
+6. **Error Handling**
+   - [x] Show user-friendly messages for session expiry, auth errors, and forbidden access.
+   - [x] Ensure all error states are handled gracefully in the UI.
+
+7. **Testing**
+   - [x] Update or add tests for:
+     - [x] Session expiry and re-login flow.
+     - [x] Protected route access.
+     - [x] User context revalidation after login/logout.
+
+8. **Documentation**
+   - [x] Document the new session management flow in this file.
+   - [x] Add developer notes on how to use the new context/hooks and how to test session flows.
+
+#### Session Management Flow Summary
+- The canonical source of user/session state is `/api/users/me`, fetched via SWR in `UserContext`.
+- All protected routes use `ProtectedRoute` and the `useUser` hook for session state.
+- Login and logout flows update the session state via SWR's `mutate`.
+- Session expiry is handled globally: on 401, the user is logged out and redirected to login.
+- All API calls use the generated OpenAPI client with `withCredentials` enabled.
+- To test session flows, use the tests in `UserContext.test.tsx` and simulate API responses as needed.
+
+#### Library Recommendation
+- **SWR** (already installed) is the recommended library for session/user state: simple, lightweight, and React-friendly.
+- No need for Redux or heavyweight state management—React context + SWR is best practice for session/user state in modern React apps.
+
+#### Sample SWR Integration for User Context
+```tsx
+import useSWR from 'swr';
+import { getUser } from '../api/generated/user/user';
+
+export function useUser() {
+  const { data, error, isLoading, mutate } = useSWR('/api/users/me', () =>
+    getUser().getApiUsersMe({ withCredentials: true }).then(res => res.data)
+  );
+  // ...return user, loading, error, logout, etc.
+}
+```
+
+- [x] Backend: Add sessionCookieSecure flag to values.yaml, config.json, and Go config. Session manager now uses this flag for all cookies. Enables local dev over HTTP (set to false) and should be true in production.
+- [x] Remove any manual fetches for user/session state elsewhere in the app.
+- [ ] Ensure backend does **not** set `Secure` flag on cookies in dev (HTTP). If you want to match production, add local HTTPS ingress with self-signed cert for kind and set `Secure` flag always.

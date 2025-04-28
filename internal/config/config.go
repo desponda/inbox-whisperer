@@ -17,10 +17,12 @@ type OpenAIConfig struct {
 }
 
 type ServerConfig struct {
-	Port        string `json:"port"`
-	DBUrl       string `json:"db_url"`
-	LogLevel    string `json:"log_level"` // e.g. "info", "debug", "warn", "error"
-	FrontendURL string `json:"frontend_url"`
+	Port                string `json:"port"`
+	DBUrl               string `json:"db_url"`
+	LogLevel            string `json:"log_level"` // e.g. "info", "debug", "warn", "error"
+	FrontendURL         string `json:"frontend_url"`
+	SessionKey          string `json:"session_key"` // Key for signing session cookies
+	SessionCookieSecure bool   `json:"sessionCookieSecure"`
 }
 
 type AppConfig struct {
@@ -64,9 +66,11 @@ func LoadConfig(path string) (*AppConfig, error) {
 			APIKey: os.Getenv("OPENAI_API_KEY"),
 		},
 		Server: ServerConfig{
-			Port:     os.Getenv("SERVER_PORT"),
-			DBUrl:    os.Getenv("DATABASE_URL"),
-			LogLevel: os.Getenv("LOG_LEVEL"),
+			Port:                os.Getenv("SERVER_PORT"),
+			DBUrl:               os.Getenv("DATABASE_URL"),
+			LogLevel:            os.Getenv("LOG_LEVEL"),
+			SessionKey:          os.Getenv("SESSION_KEY"),
+			SessionCookieSecure: os.Getenv("SESSION_COOKIE_SECURE") == "true",
 		},
 	}
 	return &cfg, nil

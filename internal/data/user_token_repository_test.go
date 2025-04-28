@@ -19,7 +19,9 @@ func TestUserTokenRepository_SaveAndGet(t *testing.T) {
 		Expiry:       time.Now().Add(1 * time.Hour).UTC(),
 		TokenType:    "Bearer",
 	}
-	userID := "user_123"
+	userID := "11111111-1111-1111-1111-111111111111"
+
+	db.Pool.Exec(ctx, `INSERT INTO users (id, email) VALUES ($1, $2) ON CONFLICT (id) DO NOTHING`, userID, "test@example.com")
 
 	if err := db.SaveUserToken(ctx, userID, tok); err != nil {
 		t.Fatalf("SaveUserToken failed: %v", err)

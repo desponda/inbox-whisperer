@@ -12,10 +12,10 @@ import (
 	"testing"
 	"time"
 
+	"github.com/desponda/inbox-whisperer/internal/auth/session"
 	"github.com/desponda/inbox-whisperer/internal/data"
 	"github.com/desponda/inbox-whisperer/internal/models"
 	"github.com/desponda/inbox-whisperer/internal/service"
-	"github.com/desponda/inbox-whisperer/internal/session"
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
 )

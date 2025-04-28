@@ -4,10 +4,14 @@ go 1.24.2
 
 require (
 	github.com/go-chi/chi/v5 v5.2.1
+	github.com/golang-jwt/jwt/v5 v5.2.2
 	github.com/golang-migrate/migrate/v4 v4.18.2
 	github.com/golang/mock v1.6.0
 	github.com/google/uuid v1.6.0
+	github.com/gorilla/sessions v1.4.0
 	github.com/jackc/pgx/v5 v5.7.4
+	github.com/lestrrat-go/jwx/v3 v3.0.0
+	github.com/lib/pq v1.10.9
 	github.com/rs/zerolog v1.34.0
 	github.com/stretchr/testify v1.10.0
 	github.com/testcontainers/testcontainers-go v0.36.0
@@ -28,6 +32,7 @@ require (
 	github.com/containerd/platforms v0.2.1 // indirect
 	github.com/cpuguy83/dockercfg v0.3.2 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
+	github.com/decred/dcrd/dcrec/secp256k1/v4 v4.4.0 // indirect
 	github.com/distribution/reference v0.6.0 // indirect
 	github.com/docker/docker v28.0.1+incompatible // indirect
 	github.com/docker/go-connections v0.5.0 // indirect
@@ -37,10 +42,12 @@ require (
 	github.com/go-logr/logr v1.4.2 // indirect
 	github.com/go-logr/stdr v1.2.2 // indirect
 	github.com/go-ole/go-ole v1.2.6 // indirect
+	github.com/goccy/go-json v0.10.3 // indirect
 	github.com/gogo/protobuf v1.3.2 // indirect
 	github.com/google/s2a-go v0.1.9 // indirect
 	github.com/googleapis/enterprise-certificate-proxy v0.3.6 // indirect
 	github.com/googleapis/gax-go/v2 v2.14.1 // indirect
+	github.com/gorilla/securecookie v1.1.2 // indirect
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.16.0 // indirect
 	github.com/hashicorp/errwrap v1.1.0 // indirect
 	github.com/hashicorp/go-multierror v1.1.1 // indirect
@@ -48,7 +55,10 @@ require (
 	github.com/jackc/pgservicefile v0.0.0-20240606120523-5a60cdf6a761 // indirect
 	github.com/jackc/puddle/v2 v2.2.2 // indirect
 	github.com/klauspost/compress v1.17.4 // indirect
-	github.com/lib/pq v1.10.9 // indirect
+	github.com/lestrrat-go/blackmagic v1.0.2 // indirect
+	github.com/lestrrat-go/httpcc v1.0.1 // indirect
+	github.com/lestrrat-go/httprc/v3 v3.0.0-beta1 // indirect
+	github.com/lestrrat-go/option v1.0.1 // indirect
 	github.com/lufia/plan9stats v0.0.0-20211012122336-39d0f177ccd0 // indirect
 	github.com/magiconair/properties v1.8.9 // indirect
 	github.com/mattn/go-colorable v0.1.13 // indirect
@@ -65,6 +75,7 @@ require (
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/power-devops/perfstat v0.0.0-20210106213030-5aafc221ea8c // indirect
+	github.com/segmentio/asm v1.2.0 // indirect
 	github.com/shirou/gopsutil/v4 v4.25.1 // indirect
 	github.com/sirupsen/logrus v1.9.3 // indirect
 	github.com/tklauser/go-sysconf v0.3.12 // indirect

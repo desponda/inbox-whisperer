@@ -2,20 +2,20 @@ package service
 
 import (
 	"context"
-	"errors"
+
 	"github.com/desponda/inbox-whisperer/internal/data"
 	"github.com/desponda/inbox-whisperer/internal/models"
-	"github.com/rs/zerolog/log"
+	"github.com/google/uuid"
 )
 
 // UserService provides business logic for users
 type UserServiceInterface interface {
-	GetUser(ctx context.Context, id string) (*models.User, error)
+	GetUser(ctx context.Context, id uuid.UUID) (*models.User, error)
 	CreateUser(ctx context.Context, user *models.User) error
 	ListUsers(ctx context.Context) ([]*models.User, error)
 	UpdateUser(ctx context.Context, user *models.User) error
-	DeleteUser(ctx context.Context, id string) error
-	DeactivateUser(ctx context.Context, id string) error
+	DeleteUser(ctx context.Context, id uuid.UUID) error
+	DeactivateUser(ctx context.Context, id uuid.UUID) error
 }
 
 type UserService struct {
@@ -23,54 +23,29 @@ type UserService struct {
 }
 
 func (s *UserService) ListUsers(ctx context.Context) ([]*models.User, error) {
-	return s.repo.List(ctx)
+	return s.repo.ListUsers(ctx)
 }
 
 func (s *UserService) UpdateUser(ctx context.Context, user *models.User) error {
-	return s.repo.Update(ctx, user)
+	return s.repo.UpdateUser(ctx, user)
 }
 
-func (s *UserService) DeleteUser(ctx context.Context, id string) error {
+func (s *UserService) DeleteUser(ctx context.Context, id uuid.UUID) error {
 	return s.repo.Delete(ctx, id)
 }
 
-func (s *UserService) DeactivateUser(ctx context.Context, id string) error {
-	user, err := s.repo.GetByID(ctx, id)
-	if err != nil {
-		if errors.Is(err, context.DeadlineExceeded) || errors.Is(err, context.Canceled) {
-			log.Error().Str("userID", id).Err(err).Msg("DeactivateUser: fatal error on GetByID")
-			return err
-		}
-		// Only treat 'not found' as idempotent
-		if err.Error() == "not found" {
-			log.Warn().Str("userID", id).Msg("DeactivateUser: user not found (idempotent)")
-			return nil
-		}
-		log.Error().Str("userID", id).Err(err).Msg("DeactivateUser: unexpected error on GetByID")
-		return err
-	}
-	if user.Deactivated {
-		log.Warn().Str("userID", id).Msg("DeactivateUser: already deactivated (idempotent)")
-		return nil // already deactivated
-	}
-	user.Deactivated = true
-	err = s.repo.Update(ctx, user)
-	if err != nil {
-		log.Error().Str("userID", id).Err(err).Msg("DeactivateUser: error updating user")
-		return err
-	}
-	log.Info().Str("userID", id).Msg("DeactivateUser: user deactivated successfully")
-	return nil
+func (s *UserService) DeactivateUser(ctx context.Context, id uuid.UUID) error {
+	return s.repo.DeactivateUser(ctx, id)
 }
 
 func NewUserService(repo data.UserRepository) UserServiceInterface {
 	return &UserService{repo: repo}
 }
 
-func (s *UserService) GetUser(ctx context.Context, id string) (*models.User, error) {
-	return s.repo.GetByID(ctx, id)
+func (s *UserService) GetUser(ctx context.Context, id uuid.UUID) (*models.User, error) {
+	return s.repo.GetUser(ctx, id)
 }
 
 func (s *UserService) CreateUser(ctx context.Context, user *models.User) error {
-	return s.repo.Create(ctx, user)
+	return s.repo.CreateUser(ctx, user)
 }

@@ -16,7 +16,8 @@ func TestEmailMessageRepository_CRUD(t *testing.T) {
 	ctx := context.Background()
 
 	msg := &models.EmailMessage{
-		UserID:                   "user-uuid-1",
+		UserID:                   "11111111-1111-1111-1111-111111111111",
+		Provider:                 "gmail",
 		EmailMessageID:           "msg-1",
 		ThreadID:                 "thread-1",
 		Subject:                  "Test Subject",
@@ -33,6 +34,8 @@ func TestEmailMessageRepository_CRUD(t *testing.T) {
 		RawJSON:                  []byte("{}"),
 	}
 
+	db.Pool.Exec(ctx, `INSERT INTO users (id, email) VALUES ($1, $2) ON CONFLICT (id) DO NOTHING`, msg.UserID, "test@example.com")
+
 	// Upsert (Create)
 	err := repo.UpsertMessage(ctx, msg)
 	if err != nil {
@@ -40,7 +43,7 @@ func TestEmailMessageRepository_CRUD(t *testing.T) {
 	}
 
 	// Get by ID
-	got, err := repo.GetMessageByID(ctx, msg.UserID, msg.EmailMessageID)
+	got, err := repo.GetMessageByID(ctx, msg.UserID, msg.Provider, msg.EmailMessageID)
 	if err != nil {
 		t.Fatalf("GetMessageByID failed: %v", err)
 	}
@@ -54,7 +57,7 @@ func TestEmailMessageRepository_CRUD(t *testing.T) {
 	if err != nil {
 		t.Fatalf("UpsertMessage (update) failed: %v", err)
 	}
-	got, err = repo.GetMessageByID(ctx, msg.UserID, msg.EmailMessageID)
+	got, err = repo.GetMessageByID(ctx, msg.UserID, msg.Provider, msg.EmailMessageID)
 	if err != nil {
 		t.Fatalf("GetMessageByID after update failed: %v", err)
 	}

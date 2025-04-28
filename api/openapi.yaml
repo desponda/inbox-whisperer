@@ -2,9 +2,9 @@ openapi: 3.0.3
 info:
   title: Inbox Whisperer API
   version: 0.1.0
-  description: >
+  description: |
     OpenAPI specification for the Inbox Whisperer backend API.
-    This spec will be expanded as endpoints are implemented.
+    This spec is always kept in sync with implemented endpoints.
 servers:
   - url: http://localhost:8080
 
@@ -56,7 +56,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
 
-  /api/email/messages:
+  /api/emails:
     get:
       tags: [Email]
       summary: Fetch user's emails
@@ -89,7 +89,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
 
-  /api/email/messages/{id}:
+  /api/emails/{id}:
     get:
       tags: [Email]
       summary: Get full email content
@@ -131,21 +131,64 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
-
-  /healthz:
-    get:
-      summary: Health check
-      description: Returns 200 OK if the server is running
+    put:
+      tags: [Email]
+      summary: Update email (not implemented)
+      description: Not implemented yet.
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
       responses:
-        '200':
-          description: OK
+        '501':
+          description: Not implemented
+        '401':
+          description: Not authenticated
           content:
-            text/plain:
+            application/json:
               schema:
-                type: string
-                example: ok
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    delete:
+      tags: [Email]
+      summary: Delete email (not implemented)
+      description: Not implemented yet.
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+      responses:
+        '501':
+          description: Not implemented
+        '401':
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
 
-  /users:
+  /api/users:
     get:
       tags: [User]
       summary: List users
@@ -219,7 +262,26 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
 
-  /users/{id}:
+  /api/users/me:
+    get:
+      tags: [User]
+      summary: Get current user
+      description: Returns the currently authenticated user.
+      responses:
+        '200':
+          description: Current user
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '401':
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/users/{id}:
     get:
       tags: [User]
       summary: Get user by ID
@@ -351,6 +413,19 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+
+  /healthz:
+    get:
+      summary: Health check
+      description: Returns 200 OK if the server is running
+      responses:
+        '200':
+          description: OK
+          content:
+            text/plain:
+              schema:
+                type: string
+                example: ok
 
 components:
   schemas:
