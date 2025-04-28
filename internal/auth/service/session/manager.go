@@ -3,11 +3,11 @@ package session
 import (
 	"context"
 	"fmt"
-	"log/slog"
 	"net/http"
 	"time"
 
 	"github.com/desponda/inbox-whisperer/internal/auth/session"
+	"github.com/rs/zerolog/log"
 )
 
 const (
@@ -46,7 +46,10 @@ func NewManagerWithSecure(store session.Store, secureCookie bool) *Manager {
 	m.cleanupWorker = NewCleanupWorker(store, DefaultCleanupInterval)
 	m.cleanupWorker.Start(ctx)
 
-	slog.Info("session manager created with cleanup worker", "cleanup_interval", DefaultCleanupInterval, "secure_cookie", secureCookie)
+	log.Info().
+		Dur("cleanup_interval", DefaultCleanupInterval).
+		Bool("secure_cookie", secureCookie).
+		Msg("session manager created with cleanup worker")
 	return m
 }
 
@@ -56,7 +59,7 @@ func (m *Manager) Close() error {
 	if m.cleanupWorker != nil {
 		m.cleanupWorker.Stop()
 	}
-	slog.Info("session manager closed")
+	log.Info().Msg("session manager closed")
 	return nil
 }
 
@@ -70,49 +73,63 @@ func (m *Manager) Start(w http.ResponseWriter, r *http.Request) (session.Session
 	// Try to get existing session from cookie
 	cookie, err := r.Cookie(SessionCookieName)
 	if err != nil && err != http.ErrNoCookie {
-		slog.Error("failed to get session cookie", "error", err, "cookie_name", SessionCookieName)
+		log.Error().
+			Err(err).
+			Str("cookie_name", SessionCookieName).
+			Msg("failed to get session cookie")
 		return nil, fmt.Errorf("failed to get session cookie: %w", err)
 	}
 
-	slog.Debug("cookie check result",
-		"has_cookie", cookie != nil,
-		"cookie_value", func() string {
+	log.Debug().
+		Bool("has_cookie", cookie != nil).
+		Str("cookie_value", func() string {
 			if cookie != nil {
 				return cookie.Value
 			}
 			return ""
-		}(),
-		"error", err)
+		}()).
+		Err(err).
+		Msg("cookie check result")
 
 	// If cookie exists, try to get session
 	if cookie != nil {
-		slog.Debug("found session cookie", "session_id", cookie.Value)
+		log.Debug().
+			Str("session_id", cookie.Value).
+			Msg("found session cookie")
 		session, err := m.store.Get(r.Context(), cookie.Value)
-		slog.Debug("session lookup result",
-			"session_found", session != nil,
-			"session_id", cookie.Value,
-			"error", err)
+		log.Debug().
+			Bool("session_found", session != nil).
+			Str("session_id", cookie.Value).
+			Err(err).
+			Msg("session lookup result")
 
 		if err == nil && session != nil {
-			slog.Debug("retrieved existing session",
-				"session_id", session.ID(),
-				"user_id", session.UserID(),
-				"expires_at", session.ExpiresAt())
+			log.Debug().
+				Str("session_id", session.ID()).
+				Str("user_id", session.UserID()).
+				Str("expires_at", session.ExpiresAt().String()).
+				Msg("retrieved existing session")
 			return session, nil
 		}
-		slog.Error("failed to get session from store", "error", err, "session_id", cookie.Value)
+		log.Error().
+			Err(err).
+			Str("session_id", cookie.Value).
+			Msg("failed to get session from store")
 	}
 
 	// Create new session
 	session, err := m.store.Create(r.Context())
 	if err != nil {
-		slog.Error("failed to create new session", "error", err)
+		log.Error().
+			Err(err).
+			Msg("failed to create new session")
 		return nil, fmt.Errorf("failed to create session: %w", err)
 	}
 
-	slog.Info("created new session",
-		"session_id", session.ID(),
-		"expires_at", session.ExpiresAt())
+	log.Info().
+		Str("session_id", session.ID()).
+		Str("expires_at", session.ExpiresAt().String()).
+		Msg("created new session")
 
 	// Set cookie
 	cookie = &http.Cookie{
@@ -125,10 +142,11 @@ func (m *Manager) Start(w http.ResponseWriter, r *http.Request) (session.Session
 		Expires:  session.ExpiresAt(),
 	}
 	http.SetCookie(w, cookie)
-	slog.Debug("set session cookie",
-		"cookie_name", cookie.Name,
-		"cookie_value", cookie.Value,
-		"expires", cookie.Expires)
+	log.Debug().
+		Str("cookie_name", cookie.Name).
+		Str("cookie_value", cookie.Value).
+		Str("expires", cookie.Expires.Format(time.RFC3339)).
+		Msg("set session cookie")
 
 	return session, nil
 }
@@ -138,18 +156,26 @@ func (m *Manager) Destroy(w http.ResponseWriter, r *http.Request) error {
 	cookie, err := r.Cookie(SessionCookieName)
 	if err != nil {
 		if err == http.ErrNoCookie {
-			slog.Debug("no session cookie to destroy")
+			log.Debug().Msg("no session cookie to destroy")
 			return nil
 		}
-		slog.Error("failed to get session cookie for destruction", "error", err, "cookie_name", SessionCookieName)
+		log.Error().
+			Err(err).
+			Str("cookie_name", SessionCookieName).
+			Msg("failed to get session cookie for destruction")
 		return fmt.Errorf("failed to get session cookie: %w", err)
 	}
 
-	slog.Info("destroying session", "session_id", cookie.Value)
+	log.Info().
+		Str("session_id", cookie.Value).
+		Msg("destroying session")
 
 	// Delete session from store
 	if err := m.store.Delete(r.Context(), cookie.Value); err != nil {
-		slog.Error("failed to delete session from store", "error", err, "session_id", cookie.Value)
+		log.Error().
+			Err(err).
+			Str("session_id", cookie.Value).
+			Msg("failed to delete session from store")
 		return fmt.Errorf("failed to delete session: %w", err)
 	}
 
@@ -165,7 +191,9 @@ func (m *Manager) Destroy(w http.ResponseWriter, r *http.Request) error {
 		MaxAge:   -1,
 	})
 
-	slog.Info("session destroyed successfully", "session_id", cookie.Value)
+	log.Info().
+		Str("session_id", cookie.Value).
+		Msg("session destroyed successfully")
 	return nil
 }
 
@@ -173,16 +201,24 @@ func (m *Manager) Destroy(w http.ResponseWriter, r *http.Request) error {
 func (m *Manager) Refresh(w http.ResponseWriter, r *http.Request) error {
 	cookie, err := r.Cookie(SessionCookieName)
 	if err != nil {
-		slog.Error("failed to get session cookie for refresh", "error", err, "cookie_name", SessionCookieName)
+		log.Error().
+			Err(err).
+			Str("cookie_name", SessionCookieName).
+			Msg("failed to get session cookie for refresh")
 		return fmt.Errorf("failed to get session cookie: %w", err)
 	}
 
-	slog.Debug("refreshing session", "session_id", cookie.Value)
+	log.Debug().
+		Str("session_id", cookie.Value).
+		Msg("refreshing session")
 
 	// Get session
 	session, err := m.store.Get(r.Context(), cookie.Value)
 	if err != nil {
-		slog.Error("failed to get session for refresh", "error", err, "session_id", cookie.Value)
+		log.Error().
+			Err(err).
+			Str("session_id", cookie.Value).
+			Msg("failed to get session for refresh")
 		return fmt.Errorf("failed to get session: %w", err)
 	}
 
@@ -197,9 +233,10 @@ func (m *Manager) Refresh(w http.ResponseWriter, r *http.Request) error {
 		Expires:  session.ExpiresAt(),
 	})
 
-	slog.Debug("session refreshed successfully",
-		"session_id", session.ID(),
-		"user_id", session.UserID(),
-		"expires_at", session.ExpiresAt())
+	log.Debug().
+		Str("session_id", session.ID()).
+		Str("user_id", session.UserID()).
+		Str("expires_at", session.ExpiresAt().String()).
+		Msg("session refreshed successfully")
 	return nil
 }

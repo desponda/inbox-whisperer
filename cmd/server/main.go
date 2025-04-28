@@ -2,7 +2,7 @@ package main
 
 import (
 	"context"
-	"fmt"
+	"io"
 	"net/http"
 	"os"
 	"os/signal"
@@ -49,8 +49,6 @@ func main() {
 		Str("go_version", runtime.Version()).
 		Time("startup_time", time.Now()).
 		Msg(versionMsg)
-	fmt.Println(versionMsg)
-	fmt.Fprintln(os.Stderr, versionMsg)
 
 	logger.Info().Msg("Starting Inbox Whisperer server")
 
@@ -84,7 +82,11 @@ func mustLoadConfig() *config.AppConfig {
 
 func setupLogger(cfg *config.AppConfig) {
 	zerolog.TimeFieldFormat = zerolog.TimeFormatUnix
-	logger = zerolog.New(os.Stdout).With().Timestamp().Logger()
+	var output io.Writer = os.Stdout
+	if os.Getenv("LOG_FORMAT") == "console" {
+		output = zerolog.ConsoleWriter{Out: os.Stdout}
+	}
+	logger = zerolog.New(output).With().Timestamp().Caller().Logger()
 	if cfg != nil && cfg.Server.LogLevel != "" {
 		if level, err := zerolog.ParseLevel(cfg.Server.LogLevel); err == nil {
 			zerolog.SetGlobalLevel(level)
@@ -160,7 +162,13 @@ func setupRouter(db *data.DB, cfg *config.AppConfig) http.Handler {
 	userService := service.NewUserService(db)
 	emailHandler := api.NewEmailHandler(emailService, sessionManager)
 	userHandler := api.NewUserHandler(userService, sessionManager)
-	authHandler := api.NewAuthHandler(cfg, db, sessionManager)
+	authHandler := api.NewAuthHandler(api.AuthHandlerDeps{
+		Config:           cfg,
+		UserTokens:       db,
+		UserRepo:         db,
+		UserIdentityRepo: db,
+		SessionManager:   sessionManager,
+	})
 
 	// Public routes
 	r.Get("/", func(w http.ResponseWriter, r *http.Request) {

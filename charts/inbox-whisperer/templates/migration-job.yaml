@@ -1,18 +1,29 @@
 apiVersion: batch/v1
 kind: Job
 metadata:
-  name: migration-job
+  name: {{ include "inbox-whisperer.fullname" . }}-migration-job
   labels:
-    app: inbox-whisperer
+    {{- include "inbox-whisperer.labels" . | nindent 4 }}
+  annotations:
+    {{- with .Values.commonAnnotations }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
 
 spec:
   template:
+    metadata:
+      labels:
+        {{- include "inbox-whisperer.labels" . | nindent 8 }}
+      annotations:
+        {{- with .Values.commonAnnotations }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
     spec:
       restartPolicy: OnFailure
       containers:
         - name: migration
-          image: inbox-whisperer-migrate:latest
-          imagePullPolicy: Never
+          image: {{ .Values.migrationJob.image }}
+          imagePullPolicy: {{ .Values.migrationJob.imagePullPolicy | default "IfNotPresent" }}
           env:
             - name: PGPASSWORD
               value: "changeme" # Use secret in prod
@@ -22,3 +33,32 @@ spec:
               value: "inboxwhisperer"
             - name: POSTGRES_HOST
               value: "db"
+          {{- with .Values.migrationJob.extraEnv }}
+          {{- toYaml . | nindent 10 }}
+          {{- end }}
+          {{- with .Values.migrationJob.extraEnvFrom }}
+          envFrom:
+          {{- toYaml . | nindent 10 }}
+          {{- end }}
+          {{- with .Values.migrationJob.extraVolumeMounts }}
+          volumeMounts:
+          {{- toYaml . | nindent 10 }}
+          {{- end }}
+          resources:
+            {{- toYaml .Values.migrationJob.resources | nindent 12 }}
+      {{- with .Values.migrationJob.extraVolumes }}
+      volumes:
+      {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.migrationJob.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.migrationJob.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.migrationJob.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}

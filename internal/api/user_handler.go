@@ -2,7 +2,6 @@ package api
 
 import (
 	"encoding/json"
-	"log/slog"
 	"net/http"
 
 	"github.com/desponda/inbox-whisperer/internal/auth/middleware"
@@ -13,6 +12,7 @@ import (
 	"github.com/desponda/inbox-whisperer/internal/service"
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
+	"github.com/rs/zerolog/log"
 	"golang.org/x/oauth2"
 )
 
@@ -50,11 +50,16 @@ func (h *UserHandler) GetMe(w http.ResponseWriter, r *http.Request) {
 	}
 	user, err := h.svc.GetUser(r.Context(), userID)
 	if err != nil {
-		slog.Debug("GetMe: user not found", "user_id", userID, "error", err)
+		log.Debug().
+			Str("user_id", userID.String()).
+			Err(err).
+			Msg("GetMe: user not found")
 		http.Error(w, "User not found", http.StatusNotFound)
 		return
 	}
-	slog.Debug("GetMe: user found", "user_id", userID)
+	log.Debug().
+		Str("user_id", userID.String()).
+		Msg("GetMe: user found")
 	json.NewEncoder(w).Encode(user)
 }
 
@@ -68,13 +73,17 @@ func (h *UserHandler) ListUsers(w http.ResponseWriter, r *http.Request) {
 	}
 	users, err := h.svc.ListUsers(r.Context())
 	if err != nil {
-		slog.Error("Failed to list users", "error", err)
+		log.Error().
+			Err(err).
+			Msg("Failed to list users")
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")
 	if err := json.NewEncoder(w).Encode(users); err != nil {
-		slog.Error("Failed to encode users", "error", err)
+		log.Error().
+			Err(err).
+			Msg("Failed to encode users")
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 		return
 	}
@@ -93,7 +102,9 @@ func (h *UserHandler) UpdateUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if !requireSelfOrAdmin(r, id) {
-		slog.Debug("UpdateUser: forbidden", "requested_id", id)
+		log.Debug().
+			Str("requested_id", id.String()).
+			Msg("UpdateUser: forbidden")
 		http.Error(w, "Forbidden", http.StatusForbidden)
 		return
 	}
@@ -123,12 +134,17 @@ func (h *UserHandler) DeleteUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if !requireSelfOrAdmin(r, id) {
-		slog.Debug("DeleteUser: forbidden", "requested_id", id)
+		log.Debug().
+			Str("requested_id", id.String()).
+			Msg("DeleteUser: forbidden")
 		http.Error(w, "Forbidden", http.StatusForbidden)
 		return
 	}
 	if err := h.svc.DeactivateUser(r.Context(), id); err != nil {
-		slog.Error("Failed to deactivate user", "user_id", id, "error", err)
+		log.Error().
+			Str("user_id", id.String()).
+			Err(err).
+			Msg("Failed to deactivate user")
 		http.Error(w, "Failed to deactivate user", http.StatusInternalServerError)
 		return
 	}
@@ -148,13 +164,18 @@ func (h *UserHandler) GetUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if !requireSelfOrAdmin(r, id) {
-		slog.Debug("GetUser: forbidden", "requested_id", id)
+		log.Debug().
+			Str("requested_id", id.String()).
+			Msg("GetUser: forbidden")
 		http.Error(w, "Forbidden", http.StatusForbidden)
 		return
 	}
 	user, err := h.svc.GetUser(r.Context(), id)
 	if err != nil {
-		slog.Error("Failed to get user", "user_id", id, "error", err)
+		log.Error().
+			Str("user_id", id.String()).
+			Err(err).
+			Msg("Failed to get user")
 		http.Error(w, "User not found", http.StatusNotFound)
 		return
 	}

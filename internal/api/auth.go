@@ -55,8 +55,18 @@ type AuthHandler struct {
 	sessionManager session.Manager
 }
 
+// AuthHandlerDeps groups dependencies for NewAuthHandler
+type AuthHandlerDeps struct {
+	Config           *config.AppConfig
+	UserTokens       data.UserTokenRepository
+	UserRepo         data.UserRepository
+	UserIdentityRepo data.UserIdentityRepository
+	SessionManager   session.Manager
+}
+
 // NewAuthHandler creates a new AuthHandler
-func NewAuthHandler(cfg *config.AppConfig, userTokens data.UserTokenRepository, sessionManager session.Manager) *AuthHandler {
+func NewAuthHandler(deps AuthHandlerDeps) *AuthHandler {
+	cfg := deps.Config
 	config := &oauth2.Config{
 		ClientID:     cfg.Google.ClientID,
 		ClientSecret: cfg.Google.ClientSecret,
@@ -67,9 +77,9 @@ func NewAuthHandler(cfg *config.AppConfig, userTokens data.UserTokenRepository, 
 
 	return &AuthHandler{
 		oauthConfig:    config,
-		oauthService:   oauth.NewService(config, userTokens),
+		oauthService:   oauth.NewService(config, deps.UserTokens, deps.UserRepo, deps.UserIdentityRepo),
 		frontendURL:    cfg.Server.FrontendURL,
-		sessionManager: sessionManager,
+		sessionManager: deps.SessionManager,
 	}
 }
 
@@ -289,8 +299,8 @@ func (h *AuthHandler) handleAuthError(w http.ResponseWriter, err error, status i
 }
 
 // RegisterAuthRoutes adds the auth endpoints to the router
-func RegisterAuthRoutes(r chi.Router, cfg *config.AppConfig, userTokens data.UserTokenRepository, sessionManager session.Manager) {
-	h := NewAuthHandler(cfg, userTokens, sessionManager)
+func RegisterAuthRoutes(r chi.Router, deps AuthHandlerDeps) {
+	h := NewAuthHandler(deps)
 	r.Get("/login", h.HandleLogin)
 	r.Get("/callback", h.HandleCallback)
 }

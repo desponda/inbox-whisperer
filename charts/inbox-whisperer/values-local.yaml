@@ -1,0 +1,13 @@
+backend:
+  imagePullPolicy: Never
+  replicaCount: 1
+
+frontend:
+  imagePullPolicy: Never
+  replicaCount: 1
+
+db:
+  replicaCount: 1
+
+migrationJob:
+  imagePullPolicy: Never 

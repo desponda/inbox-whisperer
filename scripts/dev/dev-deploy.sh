@@ -130,8 +130,10 @@ EOF
 # Helper: Helm deploy
 helm_deploy() {
   banner "[STEP 9] Helm upgrade/install (timeout 60s)"
+  # Use local values file for dev overrides
   helm upgrade --install inbox-whisperer $CHART_DIR \
     --namespace $NAMESPACE --create-namespace \
+    -f $CHART_DIR/values-local.yaml \
     --set backend.image=$BACKEND_IMAGE \
     --set frontend.image=$FRONTEND_IMAGE \
     --wait --atomic --timeout 60s || { echo "[ERROR] Helm upgrade/install failed"; exit 1; }

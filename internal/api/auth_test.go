@@ -129,7 +129,13 @@ func TestHandleLogin(t *testing.T) {
 	}
 
 	mockTokens := &stubUserTokens{}
-	h := NewAuthHandler(appConfig, mockTokens, manager)
+	h := NewAuthHandler(AuthHandlerDeps{
+		Config:           appConfig,
+		UserTokens:       mockTokens,
+		UserRepo:         nil,
+		UserIdentityRepo: nil,
+		SessionManager:   manager,
+	})
 	h.oauthService = &mockOAuthService{}
 
 	mux.HandleFunc("/auth/login", h.HandleLogin)
@@ -205,7 +211,13 @@ func TestHandleCallback(t *testing.T) {
 	}
 
 	mockTokens := &stubUserTokens{}
-	h := NewAuthHandler(appConfig, mockTokens, manager)
+	h := NewAuthHandler(AuthHandlerDeps{
+		Config:           appConfig,
+		UserTokens:       mockTokens,
+		UserRepo:         nil,
+		UserIdentityRepo: nil,
+		SessionManager:   manager,
+	})
 	h.oauthService = &mockOAuthService{}
 
 	mux.HandleFunc("/auth/callback", h.HandleCallback)
@@ -352,7 +364,13 @@ func TestRegisterAuthRoutes(t *testing.T) {
 
 	// Register routes under /auth prefix
 	r.Route("/auth", func(r chi.Router) {
-		RegisterAuthRoutes(r, cfg, userTokens, sessionManager)
+		RegisterAuthRoutes(r, AuthHandlerDeps{
+			Config:           cfg,
+			UserTokens:       userTokens,
+			UserRepo:         nil,
+			UserIdentityRepo: nil,
+			SessionManager:   sessionManager,
+		})
 	})
 
 	// Test that routes are registered

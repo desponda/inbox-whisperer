@@ -23,7 +23,6 @@ Inbox Whisperer is an AI-powered tool to help users achieve and maintain inbox z
 - Use dev.env for local overrides
 - Canonical workflows:
   - `make dev-deploy` (Kubernetes/kind)
-  - `make dev-up` (Docker Compose)
   - `make dev-down` (cleanup)
 - Only run scripts in scripts/dev-deploy.sh or Makefile targets directly
 - All config is environment-variable driven

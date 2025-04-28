@@ -17,6 +17,13 @@ type UserRepository interface {
 	DeactivateUser(ctx context.Context, id uuid.UUID) error
 }
 
+// UserIdentityRepository defines DB operations for user identities
+// (separate from UserRepository for clarity)
+type UserIdentityRepository interface {
+	GetByProviderAndProviderUserID(ctx context.Context, provider, providerUserID string) (*models.UserIdentity, error)
+	Create(ctx context.Context, identity *models.UserIdentity) error
+}
+
 // PostgresUserRepository implements UserRepository for Postgres
 // (implements all methods on *DB)
 func (db *DB) ListUsers(ctx context.Context) ([]*models.User, error) {
@@ -71,5 +78,20 @@ func (db *DB) CreateUser(ctx context.Context, user *models.User) error {
 
 func (db *DB) DeactivateUser(ctx context.Context, id uuid.UUID) error {
 	_, err := db.Pool.Exec(ctx, `UPDATE users SET deactivated = TRUE WHERE id = $1`, id)
+	return err
+}
+
+// PostgresUserIdentityRepository implements UserIdentityRepository for Postgres
+func (db *DB) GetByProviderAndProviderUserID(ctx context.Context, provider, providerUserID string) (*models.UserIdentity, error) {
+	row := db.Pool.QueryRow(ctx, `SELECT id, user_id, provider, provider_user_id, email, created_at FROM user_identities WHERE provider = $1 AND provider_user_id = $2`, provider, providerUserID)
+	var identity models.UserIdentity
+	if err := row.Scan(&identity.ID, &identity.UserID, &identity.Provider, &identity.ProviderUserID, &identity.Email, &identity.CreatedAt); err != nil {
+		return nil, err
+	}
+	return &identity, nil
+}
+
+func (db *DB) Create(ctx context.Context, identity *models.UserIdentity) error {
+	_, err := db.Pool.Exec(ctx, `INSERT INTO user_identities (id, user_id, provider, provider_user_id, email, created_at) VALUES ($1, $2, $3, $4, $5, $6) ON CONFLICT (provider, provider_user_id) DO UPDATE SET email = EXCLUDED.email`, identity.ID, identity.UserID, identity.Provider, identity.ProviderUserID, identity.Email, identity.CreatedAt)
 	return err
 }
