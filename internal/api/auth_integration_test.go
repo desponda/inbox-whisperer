@@ -10,11 +10,14 @@ import (
 	"net/http/httptest"
 	"os"
 	"testing"
+	"time"
 
+	"github.com/desponda/inbox-whisperer/internal/auth/service/session/gorilla"
 	"github.com/desponda/inbox-whisperer/internal/config"
 	"github.com/desponda/inbox-whisperer/internal/data"
 	"github.com/go-chi/chi/v5"
 	"golang.org/x/oauth2"
+	goauth2 "google.golang.org/api/oauth2/v2"
 )
 
 type fakeGoogleServer struct {
@@ -42,6 +45,23 @@ func newFakeGoogleServer() *fakeGoogleServer {
 	return f
 }
 
+// MockOAuthService implements oauth.Service for testing
+type MockOAuthService struct {
+	userInfo *goauth2.Userinfo
+	token    *oauth2.Token
+}
+
+func (m *MockOAuthService) ExchangeCodeForToken(ctx context.Context, code string) (*oauth2.Token, *goauth2.Userinfo, error) {
+	if code == "good" {
+		return m.token, m.userInfo, nil
+	}
+	return nil, nil, context.DeadlineExceeded
+}
+
+func (m *MockOAuthService) SaveUserAndToken(ctx context.Context, userInfo *goauth2.Userinfo, tok *oauth2.Token) error {
+	return nil
+}
+
 func TestAuth_FirstTimeLogin_CreatesUserAndToken(t *testing.T) {
 	if testing.Short() || os.Getenv("SKIP_DB_INTEGRATION") == "1" {
 		t.Skip("skipping integration test")
@@ -59,33 +79,69 @@ func TestAuth_FirstTimeLogin_CreatesUserAndToken(t *testing.T) {
 			RedirectURL:  "http://localhost/api/auth/callback",
 		},
 	}
-	h := NewAuthHandler(cfg, db)
-	// Patch exchangeCodeForToken to mock token exchange
-	origExchange := exchangeCodeForToken
-	exchangeCodeForToken = func(_ *AuthHandler, ctx context.Context, code string) (*oauth2.Token, error) {
-		if code == "good" {
-			return &oauth2.Token{AccessToken: "tok"}, nil
-		}
-		return nil, context.DeadlineExceeded
-	}
-	defer func() { exchangeCodeForToken = origExchange }()
 
-	// Patch fetchGoogleUserID to return both userID and email for test
-	oldFetcher := fetchGoogleUserID
-	fetchGoogleUserID = func(ctx context.Context, tok *oauth2.Token, userinfoURL string) (string, error) {
-		return "test-google-id|testuser@example.com", nil
+	// Create OAuth config
+	oauthConfig := &oauth2.Config{
+		ClientID:     cfg.Google.ClientID,
+		ClientSecret: cfg.Google.ClientSecret,
+		RedirectURL:  cfg.Google.RedirectURL,
+		Scopes:       []string{"openid", "email"},
+		Endpoint:     oauth2.Endpoint{AuthURL: "http://localhost/auth", TokenURL: "http://localhost/token"},
 	}
-	defer func() { fetchGoogleUserID = oldFetcher }()
+
+	// Create mock OAuth service
+	mockOAuth := &MockOAuthService{
+		token: &oauth2.Token{AccessToken: "test-token"},
+		userInfo: &goauth2.Userinfo{
+			Id:    fakeGoogle.UserID,
+			Email: fakeGoogle.Email,
+		},
+	}
+
+	// Create session store and manager
+	storeConfig := &gorilla.StoreConfig{
+		DB:          db.Pool,
+		TableName:   "sessions",
+		SessionName: "test_session",
+		AuthKey:     []byte("test-key"),
+		Path:        "/",
+		Domain:      "",
+		MaxAge:      int(24 * time.Hour.Seconds()),
+		Secure:      false,
+		HttpOnly:    true,
+		SameSite:    http.SameSiteLaxMode,
+	}
+
+	store, err := gorilla.NewStore(storeConfig)
+	if err != nil {
+		t.Fatalf("failed to create session store: %v", err)
+	}
+
+	manager := gorilla.NewManager(store, "test_session")
+
+	h := &AuthHandler{
+		oauthConfig:    oauthConfig,
+		oauthService:   mockOAuth,
+		frontendURL:    "http://localhost:3000",
+		sessionManager: manager,
+	}
 
 	r := chi.NewRouter()
 	r.Get("/api/auth/login", h.HandleLogin)
 	r.Get("/api/auth/callback", h.HandleCallback)
 
-	// (rest of test logic unchanged)
-
 	// First OAuth login: should create a new user and token
-	req := httptest.NewRequest("GET", "/api/auth/callback?code=good", nil)
+	req := httptest.NewRequest("GET", "/api/auth/callback?code=good&state=valid", nil)
 	w := httptest.NewRecorder()
+
+	// Set up session state
+	session, err := manager.Start(w, req)
+	if err != nil {
+		t.Fatalf("failed to start session: %v", err)
+	}
+	session.SetValue("oauth_state", "valid")
+	session.SetValue("state_created_at", time.Now().UTC())
+
 	r.ServeHTTP(w, req)
 	if w.Code != http.StatusFound && w.Code != http.StatusOK {
 		t.Fatalf("expected redirect or 200, got %d", w.Code)
@@ -110,8 +166,17 @@ func TestAuth_FirstTimeLogin_CreatesUserAndToken(t *testing.T) {
 		t.Fatalf("failed to update user email for overwrite test: %v", err)
 	}
 	// Simulate another OAuth callback
-	req2 := httptest.NewRequest("GET", "/api/auth/callback?code=good", nil)
+	req2 := httptest.NewRequest("GET", "/api/auth/callback?code=good&state=valid", nil)
 	w2 := httptest.NewRecorder()
+
+	// Set up session state for second request
+	session2, err := manager.Start(w2, req2)
+	if err != nil {
+		t.Fatalf("failed to start session: %v", err)
+	}
+	session2.SetValue("oauth_state", "valid")
+	session2.SetValue("state_created_at", time.Now().UTC())
+
 	r.ServeHTTP(w2, req2)
 	if w2.Code != http.StatusFound && w2.Code != http.StatusOK {
 		t.Fatalf("expected redirect or 200, got %d", w2.Code)

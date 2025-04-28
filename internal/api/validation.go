@@ -2,9 +2,10 @@ package api
 
 import (
 	"errors"
-	"github.com/desponda/inbox-whisperer/internal/session"
-	"github.com/go-chi/chi/v5"
 	"net/http"
+
+	"github.com/desponda/inbox-whisperer/internal/auth/session"
+	"github.com/go-chi/chi/v5"
 )
 
 // ValidateIDParam checks if the chi URL param 'id' is present and returns it, or an error.
@@ -18,9 +19,18 @@ func ValidateIDParam(r *http.Request) (string, error) {
 
 // ValidateAuth ensures the user is authenticated and returns the userID, or an error.
 func ValidateAuth(r *http.Request) (string, error) {
-	userID := session.GetUserID(r.Context())
-	if userID == "" {
+	session, ok := session.GetSession(r.Context())
+	if !ok || session.UserID() == "" {
 		return "", errors.New("not authenticated: no user session")
 	}
-	return userID, nil
+	return session.UserID(), nil
+}
+
+// ValidateSession ensures a valid session exists and returns it, or an error.
+func ValidateSession(r *http.Request) (session.Session, error) {
+	session, ok := session.GetSession(r.Context())
+	if !ok {
+		return nil, errors.New("no session found")
+	}
+	return session, nil
 }

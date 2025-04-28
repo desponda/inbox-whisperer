@@ -1,15 +1,72 @@
-dev: true
+# Default values for inbox-whisperer Helm chart
+# This file is for production. For local/dev, use values-local.yaml.
+
+nameOverride: ""
+fullnameOverride: ""
+
+# Common labels/annotations for all resources
+commonLabels: {}
+commonAnnotations: {}
 
 backend:
   image: backend:latest
-  imagePullPolicy: Never
-  replicaCount: 1
+  imagePullPolicy: IfNotPresent
+  replicaCount: 2
   configSecretName: backend-config
   configMountPath: /app/config/config.json
+  resources: {}
+  livenessProbe: {}
+  readinessProbe: {}
+  extraEnv: []
+  extraEnvFrom: []
+  extraVolumeMounts: []
+  extraVolumes: []
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}
+  service:
+    type: ClusterIP
+    annotations: {}
+
 frontend:
   image: frontend:latest
-  imagePullPolicy: Never
-  replicaCount: 1
+  imagePullPolicy: IfNotPresent
+  replicaCount: 2
+  resources: {}
+  extraEnv: []
+  extraEnvFrom: []
+  extraVolumeMounts: []
+  extraVolumes: []
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}
+  service:
+    type: ClusterIP
+    annotations: {}
+
 db:
   image: postgres:16
   replicaCount: 1
+  resources: {}
+  extraEnv: []
+  extraEnvFrom: []
+  extraVolumeMounts: []
+  extraVolumes: []
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}
+  service:
+    type: ClusterIP
+    annotations: {}
+
+migrationJob:
+  image: inbox-whisperer-migrate:latest
+  imagePullPolicy: IfNotPresent
+  resources: {}
+  extraEnv: []
+  extraEnvFrom: []
+  extraVolumeMounts: []
+  extraVolumes: []
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}

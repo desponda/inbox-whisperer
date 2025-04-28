@@ -2,6 +2,7 @@ package data
 
 import (
 	"context"
+
 	"github.com/desponda/inbox-whisperer/internal/models"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -9,7 +10,7 @@ import (
 
 type EmailMessageRepository interface {
 	UpsertMessage(ctx context.Context, msg *models.EmailMessage) error
-	GetMessageByID(ctx context.Context, userID, emailMessageID string) (*models.EmailMessage, error)
+	GetMessageByID(ctx context.Context, userID, provider, emailMessageID string) (*models.EmailMessage, error)
 	GetMessagesForUser(ctx context.Context, userID string, limit, offset int) ([]*models.EmailMessage, error)
 	GetMessagesForUserCursor(ctx context.Context, userID string, limit int, afterInternalDate int64, afterMsgID string) ([]*models.EmailMessage, error)
 	DeleteMessagesForUser(ctx context.Context, userID string) error
@@ -26,15 +27,16 @@ func NewEmailMessageRepositoryFromPool(pool *pgxpool.Pool) EmailMessageRepositor
 
 func (r *emailMessageRepository) UpsertMessage(ctx context.Context, msg *models.EmailMessage) error {
 	query := `INSERT INTO email_messages
-		(user_id, email_message_id, thread_id, subject, sender, recipient, snippet, body, internal_date, history_id, cached_at, last_fetched_at, category, categorization_confidence, raw_json)
-		VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15)
-		ON CONFLICT (user_id, email_message_id) DO UPDATE SET
+		(user_id, provider, email_message_id, thread_id, subject, sender, recipient, snippet, body, html_body, internal_date, history_id, cached_at, last_fetched_at, category, categorization_confidence, raw_json)
+		VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17)
+		ON CONFLICT (user_id, provider, email_message_id) DO UPDATE SET
 		thread_id=EXCLUDED.thread_id,
 		subject=EXCLUDED.subject,
 		sender=EXCLUDED.sender,
 		recipient=EXCLUDED.recipient,
 		snippet=EXCLUDED.snippet,
 		body=EXCLUDED.body,
+		html_body=EXCLUDED.html_body,
 		internal_date=EXCLUDED.internal_date,
 		history_id=EXCLUDED.history_id,
 		cached_at=EXCLUDED.cached_at,
@@ -44,6 +46,7 @@ func (r *emailMessageRepository) UpsertMessage(ctx context.Context, msg *models.
 		raw_json=EXCLUDED.raw_json`
 	_, err := r.pool.Exec(ctx, query,
 		msg.UserID,
+		msg.Provider,
 		msg.EmailMessageID,
 		msg.ThreadID,
 		msg.Subject,
@@ -51,6 +54,7 @@ func (r *emailMessageRepository) UpsertMessage(ctx context.Context, msg *models.
 		msg.Recipient,
 		msg.Snippet,
 		msg.Body,
+		msg.HTMLBody,
 		msg.InternalDate,
 		msg.HistoryID,
 		msg.CachedAt,
@@ -62,11 +66,11 @@ func (r *emailMessageRepository) UpsertMessage(ctx context.Context, msg *models.
 	return err
 }
 
-func (r *emailMessageRepository) GetMessageByID(ctx context.Context, userID, emailMessageID string) (*models.EmailMessage, error) {
-	query := `SELECT id, user_id, email_message_id, thread_id, subject, sender, recipient, snippet, body, internal_date, history_id, cached_at, last_fetched_at, category, categorization_confidence, raw_json FROM email_messages WHERE user_id=$1 AND email_message_id=$2`
-	row := r.pool.QueryRow(ctx, query, userID, emailMessageID)
+func (r *emailMessageRepository) GetMessageByID(ctx context.Context, userID, provider, emailMessageID string) (*models.EmailMessage, error) {
+	query := `SELECT id, user_id, provider, email_message_id, thread_id, subject, sender, recipient, snippet, body, html_body, internal_date, history_id, cached_at, last_fetched_at, category, categorization_confidence, raw_json FROM email_messages WHERE user_id=$1 AND provider=$2 AND email_message_id=$3`
+	row := r.pool.QueryRow(ctx, query, userID, provider, emailMessageID)
 	var msg models.EmailMessage
-	err := row.Scan(&msg.ID, &msg.UserID, &msg.EmailMessageID, &msg.ThreadID, &msg.Subject, &msg.Sender, &msg.Recipient, &msg.Snippet, &msg.Body, &msg.InternalDate, &msg.HistoryID, &msg.CachedAt, &msg.LastFetchedAt, &msg.Category, &msg.CategorizationConfidence, &msg.RawJSON)
+	err := row.Scan(&msg.ID, &msg.UserID, &msg.Provider, &msg.EmailMessageID, &msg.ThreadID, &msg.Subject, &msg.Sender, &msg.Recipient, &msg.Snippet, &msg.Body, &msg.HTMLBody, &msg.InternalDate, &msg.HistoryID, &msg.CachedAt, &msg.LastFetchedAt, &msg.Category, &msg.CategorizationConfidence, &msg.RawJSON)
 	if err != nil {
 		return nil, err
 	}
@@ -74,7 +78,7 @@ func (r *emailMessageRepository) GetMessageByID(ctx context.Context, userID, ema
 }
 
 func (r *emailMessageRepository) GetMessagesForUser(ctx context.Context, userID string, limit, offset int) ([]*models.EmailMessage, error) {
-	query := `SELECT id, user_id, email_message_id, thread_id, subject, sender, recipient, snippet, body, internal_date, history_id, cached_at, last_fetched_at, category, categorization_confidence, raw_json FROM email_messages WHERE user_id=$1 ORDER BY internal_date DESC, email_message_id DESC LIMIT $2 OFFSET $3`
+	query := `SELECT id, user_id, provider, email_message_id, thread_id, subject, sender, recipient, snippet, body, html_body, internal_date, history_id, cached_at, last_fetched_at, category, categorization_confidence, raw_json FROM email_messages WHERE user_id=$1 ORDER BY internal_date DESC, email_message_id DESC LIMIT $2 OFFSET $3`
 	rows, err := r.pool.Query(ctx, query, userID, limit, offset)
 	if err != nil {
 		return nil, err
@@ -83,7 +87,7 @@ func (r *emailMessageRepository) GetMessagesForUser(ctx context.Context, userID 
 	var msgs []*models.EmailMessage
 	for rows.Next() {
 		var msg models.EmailMessage
-		err := rows.Scan(&msg.ID, &msg.UserID, &msg.EmailMessageID, &msg.ThreadID, &msg.Subject, &msg.Sender, &msg.Recipient, &msg.Snippet, &msg.Body, &msg.InternalDate, &msg.HistoryID, &msg.CachedAt, &msg.LastFetchedAt, &msg.Category, &msg.CategorizationConfidence, &msg.RawJSON)
+		err := rows.Scan(&msg.ID, &msg.UserID, &msg.Provider, &msg.EmailMessageID, &msg.ThreadID, &msg.Subject, &msg.Sender, &msg.Recipient, &msg.Snippet, &msg.Body, &msg.HTMLBody, &msg.InternalDate, &msg.HistoryID, &msg.CachedAt, &msg.LastFetchedAt, &msg.Category, &msg.CategorizationConfidence, &msg.RawJSON)
 		if err != nil {
 			return nil, err
 		}
@@ -99,10 +103,10 @@ func (r *emailMessageRepository) GetMessagesForUserCursor(ctx context.Context, u
 		err   error
 	)
 	if afterInternalDate > 0 && afterMsgID != "" {
-		query = `SELECT id, user_id, email_message_id, thread_id, subject, sender, recipient, snippet, body, internal_date, history_id, cached_at, last_fetched_at, category, categorization_confidence, raw_json FROM email_messages WHERE user_id=$1 AND (internal_date, email_message_id) < ($2, $3) ORDER BY internal_date DESC, email_message_id DESC LIMIT $4`
+		query = `SELECT id, user_id, provider, email_message_id, thread_id, subject, sender, recipient, snippet, body, html_body, internal_date, history_id, cached_at, last_fetched_at, category, categorization_confidence, raw_json FROM email_messages WHERE user_id=$1 AND (internal_date, email_message_id) < ($2, $3) ORDER BY internal_date DESC, email_message_id DESC LIMIT $4`
 		rows, err = r.pool.Query(ctx, query, userID, afterInternalDate, afterMsgID, limit)
 	} else {
-		query = `SELECT id, user_id, email_message_id, thread_id, subject, sender, recipient, snippet, body, internal_date, history_id, cached_at, last_fetched_at, category, categorization_confidence, raw_json FROM email_messages WHERE user_id=$1 ORDER BY internal_date DESC, email_message_id DESC LIMIT $2`
+		query = `SELECT id, user_id, provider, email_message_id, thread_id, subject, sender, recipient, snippet, body, html_body, internal_date, history_id, cached_at, last_fetched_at, category, categorization_confidence, raw_json FROM email_messages WHERE user_id=$1 ORDER BY internal_date DESC, email_message_id DESC LIMIT $2`
 		rows, err = r.pool.Query(ctx, query, userID, limit)
 	}
 	if err != nil {
@@ -112,7 +116,7 @@ func (r *emailMessageRepository) GetMessagesForUserCursor(ctx context.Context, u
 	var msgs []*models.EmailMessage
 	for rows.Next() {
 		var msg models.EmailMessage
-		err := rows.Scan(&msg.ID, &msg.UserID, &msg.EmailMessageID, &msg.ThreadID, &msg.Subject, &msg.Sender, &msg.Recipient, &msg.Snippet, &msg.Body, &msg.InternalDate, &msg.HistoryID, &msg.CachedAt, &msg.LastFetchedAt, &msg.Category, &msg.CategorizationConfidence, &msg.RawJSON)
+		err := rows.Scan(&msg.ID, &msg.UserID, &msg.Provider, &msg.EmailMessageID, &msg.ThreadID, &msg.Subject, &msg.Sender, &msg.Recipient, &msg.Snippet, &msg.Body, &msg.HTMLBody, &msg.InternalDate, &msg.HistoryID, &msg.CachedAt, &msg.LastFetchedAt, &msg.Category, &msg.CategorizationConfidence, &msg.RawJSON)
 		if err != nil {
 			return nil, err
 		}

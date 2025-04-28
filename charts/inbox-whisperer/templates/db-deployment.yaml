@@ -1,7 +1,13 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: db
+  name: {{ include "inbox-whisperer.fullname" . }}-db
+  labels:
+    {{- include "inbox-whisperer.labels" . | nindent 4 }}
+  annotations:
+    {{- with .Values.commonAnnotations }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
 spec:
   replicas: {{ .Values.db.replicaCount }}
   selector:
@@ -11,6 +17,11 @@ spec:
     metadata:
       labels:
         app: db
+        {{- include "inbox-whisperer.labels" . | nindent 8 }}
+      annotations:
+        {{- with .Values.commonAnnotations }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
     spec:
       containers:
         - name: db
@@ -31,5 +42,34 @@ spec:
                 secretKeyRef:
                   name: db-secret
                   key: postgresDb
+          {{- with .Values.db.extraEnv }}
+          {{- toYaml . | nindent 10 }}
+          {{- end }}
+          {{- with .Values.db.extraEnvFrom }}
+          envFrom:
+          {{- toYaml . | nindent 10 }}
+          {{- end }}
           ports:
             - containerPort: 5432
+          {{- with .Values.db.extraVolumeMounts }}
+          volumeMounts:
+          {{- toYaml . | nindent 10 }}
+          {{- end }}
+          resources:
+            {{- toYaml .Values.db.resources | nindent 12 }}
+      {{- with .Values.db.extraVolumes }}
+      volumes:
+      {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.db.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.db.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.db.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}

@@ -1,0 +1,30 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+# Cursor Rules
+
+**Version:** 1
+
+## Rules
+
+### Development Documentation
+```json
+{
+  "name": "Development Documentation",
+  "pattern": "docs/developing.md",
+  "remember": true,
+  "autoOpen": true
+}
+```
+
+### Feature Documentation
+```json
+{
+  "name": "Feature Documentation",
+  "pattern": "docs/features/*.md",
+  "remember": true,
+  "autoOpen": false
+}
+```

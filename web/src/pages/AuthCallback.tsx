@@ -2,15 +2,14 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import '/fonts/inter.css';
 import { clearAllAuth } from '../context/UserContext';
-
+import { useUser } from '../context/UserContext';
 import { getAuth } from '../api/generated/auth/auth';
-
-const { getApiAuthCallback } = getAuth();
 
 const AuthCallback: React.FC = () => {
   const [status, setStatus] = useState<'loading' | 'error' | 'onboarding' | 'success'>('loading');
   const [error, setError] = useState<string | null>(null);
   const navigate = useNavigate();
+  const { mutate } = useUser();
 
   useEffect(() => {
     // Parse query params
@@ -26,7 +25,9 @@ const AuthCallback: React.FC = () => {
       }
       try {
         // Use the generated OpenAPI client to call the backend
-        await getApiAuthCallback({ code, state });
+        await getAuth().getApiAuthCallback({ code, state });
+        // Revalidate user context/session state
+        await mutate();
         const isFirstTime = params.get('first') === '1';
         if (isFirstTime) {
           setStatus('onboarding');
@@ -131,15 +132,6 @@ const AuthCallback: React.FC = () => {
             <>
               <h2 className="text-2xl font-bold mb-2 text-accent">Success!</h2>
               <p className="text-base text-gray-300">You are now signed in. Redirecting…</p>
-            </>
-          )}
-          {status === 'error' && (
-            <>
-              <h2 className="text-2xl font-bold mb-2 text-error">Authentication Error</h2>
-              <p className="text-base text-gray-300">{error}</p>
-              <a href="/login" className="btn btn-accent mt-6">
-                Back to Login
-              </a>
             </>
           )}
         </div>

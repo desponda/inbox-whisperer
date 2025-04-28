@@ -1,7 +1,13 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: backend
+  name: {{ include "inbox-whisperer.fullname" . }}-backend
+  labels:
+    {{- include "inbox-whisperer.labels" . | nindent 4 }}
+  annotations:
+    {{- with .Values.commonAnnotations }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
 spec:
   replicas: {{ .Values.backend.replicaCount }}
   selector:
@@ -11,6 +17,11 @@ spec:
     metadata:
       labels:
         app: backend
+        {{- include "inbox-whisperer.labels" . | nindent 8 }}
+      annotations:
+        {{- with .Values.commonAnnotations }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
     spec:
       containers:
         - name: backend
@@ -23,12 +34,42 @@ spec:
               value: dev
             - name: CONFIG_FILE
               value: {{ .Values.backend.configMountPath }}
-
+          {{- with .Values.backend.extraEnv }}
+          {{- toYaml . | nindent 10 }}
+          {{- end }}
+          {{- with .Values.backend.extraEnvFrom }}
+          envFrom:
+          {{- toYaml . | nindent 10 }}
+          {{- end }}
           volumeMounts:
             - name: config
               mountPath: {{ .Values.backend.configMountPath }}
               subPath: config.json
+          {{- with .Values.backend.extraVolumeMounts }}
+          {{- toYaml . | nindent 10 }}
+          {{- end }}
+          resources:
+            {{- toYaml .Values.backend.resources | nindent 12 }}
+          livenessProbe:
+            {{- toYaml .Values.backend.livenessProbe | nindent 12 }}
+          readinessProbe:
+            {{- toYaml .Values.backend.readinessProbe | nindent 12 }}
       volumes:
         - name: config
           secret:
             secretName: {{ .Values.backend.configSecretName }}
+        {{- with .Values.backend.extraVolumes }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+      {{- with .Values.backend.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.backend.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.backend.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}

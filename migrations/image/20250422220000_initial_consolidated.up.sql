@@ -1,12 +1,25 @@
 -- Inbox Whisperer: Consolidated initial schema migration (2025-04-22)
 
 -- 1. Users
--- TEMPORARY: Using TEXT for user id (Google user id) for development only. See docs/features/future/identity-refactor.md for tech debt plan.
-CREATE TABLE IF NOT EXISTS users (
-    id TEXT PRIMARY KEY,
+DROP TABLE IF EXISTS users CASCADE;
+CREATE TABLE users (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     email VARCHAR(255) UNIQUE NOT NULL,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     deactivated BOOLEAN NOT NULL DEFAULT FALSE
+);
+
+-- 1a. User Identities (external auth providers)
+DROP TABLE IF EXISTS user_identities CASCADE;
+CREATE TABLE user_identities (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    provider VARCHAR(32) NOT NULL, -- e.g. 'google', 'github'
+    provider_user_id VARCHAR(128) NOT NULL, -- e.g. Google user id
+    email VARCHAR(255),
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    UNIQUE(provider, provider_user_id),
+    UNIQUE(user_id, provider)
 );
 
 -- 2. Categories
@@ -17,9 +30,10 @@ CREATE TABLE IF NOT EXISTS categories (
 );
 
 -- 3. Emails (Gmail, provider-agnostic)
-CREATE TABLE IF NOT EXISTS emails (
+DROP TABLE IF EXISTS emails CASCADE;
+CREATE TABLE emails (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    user_id TEXT REFERENCES users(id) ON DELETE CASCADE,
+    user_id UUID REFERENCES users(id) ON DELETE CASCADE,
     gmail_id VARCHAR(128) NOT NULL,
     subject TEXT,
     sender TEXT,
@@ -42,9 +56,10 @@ CREATE TABLE IF NOT EXISTS email_category_assignments (
 );
 
 -- 5. ActionLogs
-CREATE TABLE IF NOT EXISTS action_logs (
+DROP TABLE IF EXISTS action_logs CASCADE;
+CREATE TABLE action_logs (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    user_id TEXT REFERENCES users(id) ON DELETE SET NULL,
+    user_id UUID REFERENCES users(id) ON DELETE SET NULL,
     action VARCHAR(64) NOT NULL,
     target_type VARCHAR(64),
     target_id INTEGER,
@@ -53,9 +68,11 @@ CREATE TABLE IF NOT EXISTS action_logs (
 );
 
 -- 6. EmailMessages (provider-agnostic, matches Go model)
-CREATE TABLE IF NOT EXISTS email_messages (
+DROP TABLE IF EXISTS email_messages CASCADE;
+CREATE TABLE email_messages (
     id SERIAL PRIMARY KEY,
-    user_id TEXT NOT NULL,
+    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    provider VARCHAR(32) NOT NULL,
     email_message_id TEXT NOT NULL,
     thread_id TEXT,
     subject TEXT,
@@ -71,15 +88,16 @@ CREATE TABLE IF NOT EXISTS email_messages (
     category TEXT,
     categorization_confidence FLOAT,
     raw_json JSONB,
-    UNIQUE(user_id, email_message_id)
+    UNIQUE(user_id, provider, email_message_id)
 );
 
 CREATE INDEX IF NOT EXISTS idx_email_messages_user_id ON email_messages(user_id);
 CREATE INDEX IF NOT EXISTS idx_email_messages_email_message_id ON email_messages(email_message_id);
 
 -- 7. UserTokens
-CREATE TABLE IF NOT EXISTS user_tokens (
-    user_id TEXT PRIMARY KEY,
+DROP TABLE IF EXISTS user_tokens CASCADE;
+CREATE TABLE user_tokens (
+    user_id UUID PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
     token_json TEXT NOT NULL,
     updated_at TIMESTAMP NOT NULL DEFAULT now()
 );
@@ -100,3 +118,24 @@ ON CONFLICT (name) DO NOTHING;
 CREATE INDEX IF NOT EXISTS idx_emails_user_id ON emails(user_id);
 CREATE INDEX IF NOT EXISTS idx_email_assignments_email_id ON email_category_assignments(email_id);
 CREATE INDEX IF NOT EXISTS idx_action_logs_user_id ON action_logs(user_id);
+
+-- 10. Sessions
+CREATE TABLE IF NOT EXISTS sessions (
+    id VARCHAR(255) PRIMARY KEY,
+    user_id VARCHAR(255),
+    created_at TIMESTAMP WITH TIME ZONE NOT NULL,
+    expires_at TIMESTAMP WITH TIME ZONE NOT NULL,
+    values JSONB NOT NULL
+);
+
+-- Index for faster cleanup of expired sessions
+CREATE INDEX IF NOT EXISTS idx_sessions_expires_at ON sessions(expires_at);
+
+-- Index for looking up sessions by user
+CREATE INDEX IF NOT EXISTS idx_sessions_user_id ON sessions(user_id);
+
+-- Add comment to table
+COMMENT ON TABLE sessions IS 'Stores user session data';
+
+-- Ensure expired sessions are cleaned up
+DELETE FROM sessions WHERE expires_at <= NOW();

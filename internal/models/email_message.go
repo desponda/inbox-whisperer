@@ -10,7 +10,8 @@ import (
 type EmailMessage struct {
 	ID                       int64 // Local DB primary key
 	UserID                   string
-	EmailMessageID           string // Unified message ID (was GmailMessageID)
+	Provider                 string // e.g. "gmail", "outlook"
+	EmailMessageID           string // Provider's message ID
 	ThreadID                 string
 	Subject                  string
 	Sender                   string

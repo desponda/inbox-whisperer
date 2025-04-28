@@ -11,6 +11,12 @@ Inbox Whisperer is a suite of AI-powered tools designed to help users achieve an
 - **Accent Color:** Use the accent color (`#14e0c9`) for highlights, buttons, and gradients.
 - **No glassmorphism or excessive shadows.**
 
+## Testing
+- All tests must follow the guidelines in [testing.md](testing.md)
+- Integration tests MUST use testcontainers-go for external service dependencies
+- Never rely on local service installations or external services for tests
+- See [testing.md](testing.md) for detailed examples and best practices
+
 ## Running the Full Stack Locally
 
 - Copy `config.json.template` to `config.json` and fill in real values (never commit secrets).

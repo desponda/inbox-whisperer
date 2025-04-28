@@ -1,0 +1,55 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+# Cursor Context: Project Development Principles
+
+**Source:** docs/developing.md
+
+## Project Overview
+Inbox Whisperer is an AI-powered tool to help users achieve and maintain inbox zero, with a Go backend and a modern React frontend. The first feature is the Inbox Zero Helper, guiding users to triage and organize their Gmail inbox efficiently.
+
+## Design System & Theme
+- Modern, shiny dark gradient background
+- DM Sans font (imported via web/public/fonts/dmsans.css)
+- No glassmorphism or excessive shadows
+
+## Testing
+- All tests follow docs/testing.md
+- Integration tests use testcontainers-go (never rely on local/external services)
+
+## Local Development Workflow
+- Use dev.env for local overrides
+- Canonical workflows:
+  - `make dev-deploy` (Kubernetes/kind)
+  - `make dev-down` (cleanup)
+- Only run scripts in scripts/dev-deploy.sh or Makefile targets directly
+- All config is environment-variable driven
+
+## MVP Focus
+- Google OAuth2 login
+- Fetch and view emails
+- All endpoints described in OpenAPI (kept up-to-date)
+- React SPA frontend, strict best practices, auto-generated OpenAPI client
+
+## Core Workflow
+1. Email fetching: Securely connect to Gmail, fetch emails, cache summaries, background sync
+2. Categorization: AI sorts emails into Promotions/Ads, To Review, Important, Deferred
+3. Guided cleanup: Users process each category in order
+4. Goal: Only important/deferred emails remain in inbox
+
+## Coding Principles
+- Always use strict best practiced production grade coding standards, clean architecture, seperation of concerns
+- **Backend:** RESTful API (go-chi), separation of concerns, clean code, interfaces/abstraction
+- **Frontend:** React+Vite+TypeScript, DaisyUI/Tailwind, strict linting/formatting, modular structure, React Router, OpenAPI client
+
+## Feature Development Workflow
+- Each feature has a Markdown spec in docs/features/
+- Implementation plan and checklist per feature
+- AI tools update checklists and plans as work progresses
+
+## Notes
+- Large/test output files are ignored in git
+- Use `make help` for all targets
+- This context is maintained for AI and human contributors

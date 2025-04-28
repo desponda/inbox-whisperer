@@ -50,12 +50,9 @@ jobs:
         with:
           node-version: '22.14.0'
           cache: 'npm'
+          cache-dependency-path: web/package-lock.json
       - name: Pin npm version
         run: npm install -g npm@11.3.0
-      - name: Install migrate
-        run: |
-          curl -L https://github.com/golang-migrate/migrate/releases/download/v4.18.2/migrate.linux-amd64.tar.gz | tar xvz
-          sudo mv migrate /usr/local/bin/migrate
 
   backend-lint:
     runs-on: ubuntu-latest

@@ -1,12 +1,15 @@
-import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
+import React, { createContext, useContext, ReactNode, useCallback, useMemo } from 'react';
+import useSWR from 'swr';
+import { getUser } from '../api/generated/user/user';
 import { components } from '../api/types';
 
 export type User = components['schemas']['User'] | null;
 
 interface UserContextValue {
   user: User;
-  setUser: (user: User) => void;
   loading: boolean;
+  error: any;
+  mutate: () => void;
   logout: () => void;
 }
 
@@ -16,58 +19,61 @@ export function clearAllAuth() {
   // Expire all cookies (browser only allows path-level, so this is best effort)
   document.cookie.split(';').forEach(cookie => {
     const eqPos = cookie.indexOf('=');
-    const name = eqPos > -1 ? cookie.substr(0, eqPos) : cookie;
-    document.cookie = name + '=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/;SameSite=Strict';
+    const name = eqPos > -1 ? cookie.substr(0, eqPos).trim() : cookie.trim();
+    document.cookie = `${name}=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/;SameSite=Strict`;
+    // Also try root path
+    document.cookie = `${name}=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/api;SameSite=Strict`;
   });
   localStorage.clear();
   sessionStorage.clear();
 }
 
-export const UserProvider = ({ children }: { children: ReactNode }) => {
-  const [user, setUser] = useState<User>(null);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    // Fetch current user info from backend (e.g., /api/users/me or session endpoint)
-    async function fetchUser() {
-      setLoading(true);
-      try {
-        const res = await fetch('/api/users/me', { credentials: 'include' });
-        if (res.ok) {
-          const data = await res.json();
-          setUser(data);
-        } else {
-          // On 401, clear cookies, localStorage, and redirect to login with message
-          if (res.status === 401) {
-            clearAllAuth();
-            window.location.href = '/login?reason=session_expired';
-            return;
-          }
-          setUser(null);
-        }
-      } catch {
-        setUser(null);
+export const UserProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
+  // Use SWR for user session state
+  const fetchUser = async () => {
+    try {
+      const res = await getUser().getApiUsersMe({ withCredentials: true });
+      return res.data;
+    } catch (error: any) {
+      if (error?.response?.status === 401) {
+        // Session expired, clear auth, but do not redirect
+        clearAllAuth();
+        return null;
       }
-      setLoading(false);
+      throw error;
     }
-    fetchUser();
-  }, []);
+  };
 
-  function logout() {
-    // For MVP, just clear user and optionally call a logout endpoint
-    setUser(null);
-    fetch('/api/auth/logout', { method: 'POST', credentials: 'include' });
-  }
+  const { data: user, error, isLoading, mutate } = useSWR('/api/users/me', fetchUser, {
+    revalidateOnFocus: true,
+    shouldRetryOnError: false,
+  });
+
+  const logout = useCallback(() => {
+    clearAllAuth();
+    mutate();
+    window.location.href = '/login';
+  }, [mutate]);
+
+  const contextValue = useMemo(() => ({
+    user: user ?? null,
+    loading: isLoading,
+    error,
+    mutate,
+    logout,
+  }), [user, isLoading, error, mutate, logout]);
 
   return (
-    <UserContext.Provider value={{ user, setUser, loading, logout }}>
+    <UserContext.Provider value={contextValue}>
       {children}
     </UserContext.Provider>
   );
 };
 
 export function useUser() {
-  const ctx = useContext(UserContext);
-  if (!ctx) throw new Error('useUser must be used within a UserProvider');
-  return ctx;
+  const context = useContext(UserContext);
+  if (context === undefined) {
+    throw new Error('useUser must be used within a UserProvider');
+  }
+  return context;
 }

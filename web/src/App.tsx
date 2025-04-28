@@ -4,8 +4,8 @@ import Home from './pages/Home';
 import Login from './pages/Login';
 import AuthCallback from './pages/AuthCallback';
 import Dashboard from './pages/Dashboard';
-import ProtectedRoute from './components/ProtectedRoute';
 import { UserProvider } from './context/UserContext';
+import { RequireAuth } from './components/RequireAuth';
 
 const App: React.FC = () => (
   <UserProvider>
@@ -17,9 +17,9 @@ const App: React.FC = () => (
         <Route
           path="/dashboard"
           element={
-            <ProtectedRoute>
+            <RequireAuth>
               <Dashboard />
-            </ProtectedRoute>
+            </RequireAuth>
           }
         />
         <Route path="*" element={<Navigate to="/" replace />} />

@@ -2,69 +2,63 @@ package service
 
 import (
 	"context"
-	"errors"
+	"testing"
+
 	"github.com/desponda/inbox-whisperer/internal/data"
 	"github.com/desponda/inbox-whisperer/internal/models"
-	"testing"
+	"github.com/google/uuid"
 )
 
 type mockUserRepo struct {
-	GetByIDFunc func(ctx context.Context, id string) (*models.User, error)
-	CreateFunc  func(ctx context.Context, user *models.User) error
-	ListFunc    func(ctx context.Context) ([]*models.User, error)
-	UpdateFunc  func(ctx context.Context, user *models.User) error
-	DeleteFunc  func(ctx context.Context, id string) error
+	GetUserFunc        func(ctx context.Context, id uuid.UUID) (*models.User, error)
+	CreateUserFunc     func(ctx context.Context, user *models.User) error
+	ListUsersFunc      func(ctx context.Context) ([]*models.User, error)
+	UpdateUserFunc     func(ctx context.Context, user *models.User) error
+	DeleteFunc         func(ctx context.Context, id uuid.UUID) error
+	DeactivateUserFunc func(ctx context.Context, id uuid.UUID) error
 }
 
-func (m *mockUserRepo) List(ctx context.Context) ([]*models.User, error) {
-	if m.ListFunc != nil {
-		return m.ListFunc(ctx)
-	}
-	return nil, nil
+func (m *mockUserRepo) GetUser(ctx context.Context, id uuid.UUID) (*models.User, error) {
+	return m.GetUserFunc(ctx, id)
 }
-
-func (m *mockUserRepo) Update(ctx context.Context, user *models.User) error {
-	if m.UpdateFunc != nil {
-		return m.UpdateFunc(ctx, user)
-	}
-	return nil
+func (m *mockUserRepo) CreateUser(ctx context.Context, user *models.User) error {
+	return m.CreateUserFunc(ctx, user)
 }
-
-func (m *mockUserRepo) Delete(ctx context.Context, id string) error {
-	if m.DeleteFunc != nil {
-		return m.DeleteFunc(ctx, id)
-	}
-	return nil
+func (m *mockUserRepo) ListUsers(ctx context.Context) ([]*models.User, error) {
+	return m.ListUsersFunc(ctx)
 }
-
-func (m *mockUserRepo) GetByID(ctx context.Context, id string) (*models.User, error) {
-	return m.GetByIDFunc(ctx, id)
+func (m *mockUserRepo) UpdateUser(ctx context.Context, user *models.User) error {
+	return m.UpdateUserFunc(ctx, user)
 }
-func (m *mockUserRepo) Create(ctx context.Context, user *models.User) error {
-	return m.CreateFunc(ctx, user)
+func (m *mockUserRepo) Delete(ctx context.Context, id uuid.UUID) error {
+	return m.DeleteFunc(ctx, id)
+}
+func (m *mockUserRepo) DeactivateUser(ctx context.Context, id uuid.UUID) error {
+	return m.DeactivateUserFunc(ctx, id)
 }
 
 func TestUserService_GetUser(t *testing.T) {
+	testUUID := uuid.MustParse("11111111-1111-1111-1111-111111111111")
 	tests := []struct {
 		name     string
-		id       string
-		repoFunc func(ctx context.Context, id string) (*models.User, error)
+		id       uuid.UUID
+		repoFunc func(ctx context.Context, id uuid.UUID) (*models.User, error)
 		wantUser *models.User
 		wantErr  bool
 	}{
 		{
 			name: "success",
-			id:   "abc",
-			repoFunc: func(ctx context.Context, id string) (*models.User, error) {
+			id:   testUUID,
+			repoFunc: func(ctx context.Context, id uuid.UUID) (*models.User, error) {
 				return &models.User{ID: id, Email: "test@example.com"}, nil
 			},
-			wantUser: &models.User{ID: "abc", Email: "test@example.com"},
+			wantUser: &models.User{ID: testUUID, Email: "test@example.com"},
 			wantErr:  false,
 		},
 		{
 			name: "repo error",
-			id:   "xyz",
-			repoFunc: func(ctx context.Context, id string) (*models.User, error) {
+			id:   testUUID,
+			repoFunc: func(ctx context.Context, id uuid.UUID) (*models.User, error) {
 				return nil, context.DeadlineExceeded
 			},
 			wantUser: nil,
@@ -73,7 +67,7 @@ func TestUserService_GetUser(t *testing.T) {
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			repo := &mockUserRepo{GetByIDFunc: tc.repoFunc}
+			repo := &mockUserRepo{GetUserFunc: tc.repoFunc}
 			var repoIface data.UserRepository = repo
 			svc := NewUserService(repoIface)
 			user, err := svc.GetUser(context.Background(), tc.id)
@@ -88,10 +82,11 @@ func TestUserService_GetUser(t *testing.T) {
 }
 
 func TestUserService_ListUsers(t *testing.T) {
+	testUUID := uuid.MustParse("11111111-1111-1111-1111-111111111111")
 	t.Run("success", func(t *testing.T) {
 		repo := &mockUserRepo{
-			ListFunc: func(ctx context.Context) ([]*models.User, error) {
-				return []*models.User{{ID: "a", Email: "a@example.com"}}, nil
+			ListUsersFunc: func(ctx context.Context) ([]*models.User, error) {
+				return []*models.User{{ID: testUUID, Email: "a@example.com"}}, nil
 			},
 		}
 		var repoIface data.UserRepository = repo
@@ -100,13 +95,13 @@ func TestUserService_ListUsers(t *testing.T) {
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
-		if len(users) != 1 || users[0].ID != "a" {
+		if len(users) != 1 || users[0].ID != testUUID {
 			t.Errorf("unexpected users: %+v", users)
 		}
 	})
 	t.Run("error", func(t *testing.T) {
 		repo := &mockUserRepo{
-			ListFunc: func(ctx context.Context) ([]*models.User, error) {
+			ListUsersFunc: func(ctx context.Context) ([]*models.User, error) {
 				return nil, context.DeadlineExceeded
 			},
 		}
@@ -120,38 +115,39 @@ func TestUserService_ListUsers(t *testing.T) {
 }
 
 func TestUserService_UpdateUser(t *testing.T) {
+	testUUID := uuid.MustParse("11111111-1111-1111-1111-111111111111")
 	t.Run("success", func(t *testing.T) {
 		called := false
 		repo := &mockUserRepo{
-			UpdateFunc: func(ctx context.Context, user *models.User) error {
+			UpdateUserFunc: func(ctx context.Context, user *models.User) error {
 				called = true
 				return nil
 			},
 		}
 		var repoIface data.UserRepository = repo
 		svc := NewUserService(repoIface)
-		err := svc.UpdateUser(context.Background(), &models.User{ID: "a"})
+		err := svc.UpdateUser(context.Background(), &models.User{ID: testUUID})
 		if err != nil {
-			t.Logf("TestUserService_UpdateUser success: input user=%+v, err=%v", &models.User{ID: "a"}, err)
+			t.Logf("TestUserService_UpdateUser success: input user=%+v, err=%v", &models.User{ID: testUUID}, err)
 		}
 
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
 		if !called {
-			t.Error("expected UpdateFunc to be called")
+			t.Error("expected UpdateUserFunc to be called")
 		}
 	})
 	t.Run("error", func(t *testing.T) {
 		repo := &mockUserRepo{
-			UpdateFunc: func(ctx context.Context, user *models.User) error {
+			UpdateUserFunc: func(ctx context.Context, user *models.User) error {
 				return context.DeadlineExceeded
 			},
 		}
 		var repoIface data.UserRepository = repo
 		svc := NewUserService(repoIface)
-		err := svc.UpdateUser(context.Background(), &models.User{ID: "a"})
-		t.Logf("TestUserService_UpdateUser error: input user=%+v, err=%v", &models.User{ID: "a"}, err)
+		err := svc.UpdateUser(context.Background(), &models.User{ID: testUUID})
+		t.Logf("TestUserService_UpdateUser error: input user=%+v, err=%v", &models.User{ID: testUUID}, err)
 		if err == nil {
 			t.Error("expected error, got nil")
 		}
@@ -159,18 +155,19 @@ func TestUserService_UpdateUser(t *testing.T) {
 }
 
 func TestUserService_DeleteUser(t *testing.T) {
+	testUUID := uuid.MustParse("11111111-1111-1111-1111-111111111111")
 	t.Run("success", func(t *testing.T) {
 		called := false
 		repo := &mockUserRepo{
-			DeleteFunc: func(ctx context.Context, id string) error {
+			DeleteFunc: func(ctx context.Context, id uuid.UUID) error {
 				called = true
 				return nil
 			},
 		}
 		var repoIface data.UserRepository = repo
 		svc := NewUserService(repoIface)
-		err := svc.DeleteUser(context.Background(), "a")
-		t.Logf("TestUserService_DeleteUser success: id=%s, err=%v", "a", err)
+		err := svc.DeleteUser(context.Background(), testUUID)
+		t.Logf("TestUserService_DeleteUser success: id=%s, err=%v", testUUID, err)
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
@@ -180,14 +177,14 @@ func TestUserService_DeleteUser(t *testing.T) {
 	})
 	t.Run("error", func(t *testing.T) {
 		repo := &mockUserRepo{
-			DeleteFunc: func(ctx context.Context, id string) error {
+			DeleteFunc: func(ctx context.Context, id uuid.UUID) error {
 				return context.DeadlineExceeded
 			},
 		}
 		var repoIface data.UserRepository = repo
 		svc := NewUserService(repoIface)
-		err := svc.DeleteUser(context.Background(), "a")
-		t.Logf("TestUserService_DeleteUser error: id=%s, err=%v", "a", err)
+		err := svc.DeleteUser(context.Background(), testUUID)
+		t.Logf("TestUserService_DeleteUser error: id=%s, err=%v", testUUID, err)
 		if err == nil {
 			t.Error("expected error, got nil")
 		}
@@ -195,128 +192,34 @@ func TestUserService_DeleteUser(t *testing.T) {
 }
 
 func TestUserService_DeactivateUser(t *testing.T) {
+	testUUID := uuid.MustParse("11111111-1111-1111-1111-111111111111")
 	t.Run("success", func(t *testing.T) {
-		user := &models.User{ID: "abc", Deactivated: false}
-		getByIDCalled := false
-		updateCalled := false
+		called := false
 		repo := &mockUserRepo{
-			GetByIDFunc: func(ctx context.Context, id string) (*models.User, error) {
-				getByIDCalled = true
-				return user, nil
-			},
-			UpdateFunc: func(ctx context.Context, u *models.User) error {
-				updateCalled = true
-				if !u.Deactivated {
-					t.Errorf("expected user to be deactivated, got %+v", u)
-				}
+			DeactivateUserFunc: func(ctx context.Context, id uuid.UUID) error {
+				called = true
 				return nil
 			},
 		}
 		var repoIface data.UserRepository = repo
 		svc := NewUserService(repoIface)
-		err := svc.DeactivateUser(context.Background(), "abc")
+		err := svc.DeactivateUser(context.Background(), testUUID)
 		if err != nil {
-			t.Logf("TestUserService_DeactivateUser success: id=%s, err=%v", "abc", err)
+			t.Fatalf("unexpected error: %v", err)
 		}
-
-		if err != nil {
-			t.Errorf("unexpected error: %v", err)
-		}
-		if !getByIDCalled || !updateCalled {
-			t.Error("expected GetByID and Update to be called")
+		if !called {
+			t.Error("expected DeactivateUserFunc to be called")
 		}
 	})
-
-	t.Run("already deactivated (idempotent)", func(t *testing.T) {
-		user := &models.User{ID: "abc", Deactivated: true}
-		getByIDCalled := false
-		updateCalled := false
+	t.Run("error", func(t *testing.T) {
 		repo := &mockUserRepo{
-			GetByIDFunc: func(ctx context.Context, id string) (*models.User, error) {
-				getByIDCalled = true
-				return user, nil
-			},
-			UpdateFunc: func(ctx context.Context, u *models.User) error {
-				updateCalled = true
-				return nil
-			},
-		}
-		var repoIface data.UserRepository = repo
-		svc := NewUserService(repoIface)
-		err := svc.DeactivateUser(context.Background(), "abc")
-		if err != nil {
-			t.Logf("TestUserService_DeactivateUser already deactivated: id=%s, err=%v", "abc", err)
-		}
-
-		if err != nil {
-			t.Errorf("unexpected error: %v", err)
-		}
-		if !getByIDCalled {
-			t.Error("expected GetByID to be called")
-		}
-		if updateCalled {
-			t.Error("expected Update NOT to be called for already deactivated user")
-		}
-	})
-
-	t.Run("user not found (idempotent)", func(t *testing.T) {
-		getByIDCalled := false
-		repo := &mockUserRepo{
-			GetByIDFunc: func(ctx context.Context, id string) (*models.User, error) {
-				getByIDCalled = true
-				return nil, errors.New("not found")
-			},
-		}
-		var repoIface data.UserRepository = repo
-		svc := NewUserService(repoIface)
-		err := svc.DeactivateUser(context.Background(), "no-user")
-		if err != nil {
-			t.Logf("TestUserService_DeactivateUser not found: id=%s, err=%v", "no-user", err)
-		}
-
-		if err != nil {
-			t.Errorf("unexpected error: %v", err)
-		}
-		if !getByIDCalled {
-			t.Error("expected GetByID to be called")
-		}
-	})
-
-	t.Run("repo error on GetByID", func(t *testing.T) {
-		repo := &mockUserRepo{
-			GetByIDFunc: func(ctx context.Context, id string) (*models.User, error) {
-				return nil, context.DeadlineExceeded
-			},
-		}
-		var repoIface data.UserRepository = repo
-		svc := NewUserService(repoIface)
-		err := svc.DeactivateUser(context.Background(), "abc")
-		if err != nil {
-			t.Logf("TestUserService_DeactivateUser repo error GetByID: id=%s, err=%v", "abc", err)
-		}
-
-		if err == nil {
-			t.Error("expected error, got nil")
-		}
-	})
-
-	t.Run("repo error on Update", func(t *testing.T) {
-		user := &models.User{ID: "abc", Deactivated: false}
-		repo := &mockUserRepo{
-			GetByIDFunc: func(ctx context.Context, id string) (*models.User, error) {
-				return user, nil
-			},
-			UpdateFunc: func(ctx context.Context, u *models.User) error {
+			DeactivateUserFunc: func(ctx context.Context, id uuid.UUID) error {
 				return context.DeadlineExceeded
 			},
 		}
 		var repoIface data.UserRepository = repo
 		svc := NewUserService(repoIface)
-		err := svc.DeactivateUser(context.Background(), "abc")
-		if err != nil {
-			t.Logf("TestUserService_DeactivateUser repo error Update: id=%s, err=%v", "abc", err)
-		}
-
+		err := svc.DeactivateUser(context.Background(), testUUID)
 		if err == nil {
 			t.Error("expected error, got nil")
 		}
@@ -324,54 +227,36 @@ func TestUserService_DeactivateUser(t *testing.T) {
 }
 
 func TestUserService_CreateUser(t *testing.T) {
-	tests := []struct {
-		name      string
-		inputUser *models.User
-		repoFunc  func(ctx context.Context, user *models.User) error
-		wantErr   bool
-		wantCall  bool
-	}{
-		{
-			name:      "success",
-			inputUser: &models.User{ID: "abc"},
-			repoFunc: func(ctx context.Context, user *models.User) error {
+	testUUID := uuid.MustParse("11111111-1111-1111-1111-111111111111")
+	t.Run("success", func(t *testing.T) {
+		called := false
+		repo := &mockUserRepo{
+			CreateUserFunc: func(ctx context.Context, user *models.User) error {
+				called = true
 				return nil
 			},
-			wantErr:  false,
-			wantCall: true,
-		},
-		{
-			name:      "repo error",
-			inputUser: &models.User{ID: "abc"},
-			repoFunc: func(ctx context.Context, user *models.User) error {
+		}
+		var repoIface data.UserRepository = repo
+		svc := NewUserService(repoIface)
+		err := svc.CreateUser(context.Background(), &models.User{ID: testUUID})
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if !called {
+			t.Error("expected CreateUserFunc to be called")
+		}
+	})
+	t.Run("error", func(t *testing.T) {
+		repo := &mockUserRepo{
+			CreateUserFunc: func(ctx context.Context, user *models.User) error {
 				return context.DeadlineExceeded
 			},
-			wantErr:  true,
-			wantCall: true,
-		},
-	}
-	for _, tc := range tests {
-		t.Run(tc.name, func(t *testing.T) {
-			called := false
-			repo := &mockUserRepo{
-				CreateFunc: func(ctx context.Context, user *models.User) error {
-					called = true
-					return tc.repoFunc(ctx, user)
-				},
-			}
-			var repoIface data.UserRepository = repo
-			svc := NewUserService(repoIface)
-			err := svc.CreateUser(context.Background(), tc.inputUser)
-			if err != nil {
-				t.Logf("TestUserService_CreateUser error: input user=%+v, err=%v", tc.inputUser, err)
-			}
-
-			if (err != nil) != tc.wantErr {
-				t.Errorf("expected error=%v, got %v", tc.wantErr, err)
-			}
-			if called != tc.wantCall {
-				t.Errorf("expected called=%v, got %v", tc.wantCall, called)
-			}
-		})
-	}
+		}
+		var repoIface data.UserRepository = repo
+		svc := NewUserService(repoIface)
+		err := svc.CreateUser(context.Background(), &models.User{ID: testUUID})
+		if err == nil {
+			t.Error("expected error, got nil")
+		}
+	})
 }

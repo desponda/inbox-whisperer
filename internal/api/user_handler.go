@@ -1,152 +1,217 @@
 package api
 
 import (
-	"github.com/desponda/inbox-whisperer/internal/service"
-	"github.com/desponda/inbox-whisperer/internal/session"
-	"github.com/go-chi/chi/v5"
+	"encoding/json"
 	"net/http"
+
+	"github.com/desponda/inbox-whisperer/internal/auth/middleware"
+	"github.com/desponda/inbox-whisperer/internal/auth/session"
+	"github.com/desponda/inbox-whisperer/internal/common"
+	"github.com/desponda/inbox-whisperer/internal/data"
+	"github.com/desponda/inbox-whisperer/internal/models"
+	"github.com/desponda/inbox-whisperer/internal/service"
+	"github.com/go-chi/chi/v5"
+	"github.com/google/uuid"
 	"github.com/rs/zerolog/log"
+	"golang.org/x/oauth2"
 )
+
+type UserHandler struct {
+	svc            service.UserServiceInterface
+	sessionManager session.Manager
+}
+
+func NewUserHandler(svc service.UserServiceInterface, sessionManager session.Manager) *UserHandler {
+	return &UserHandler{
+		svc:            svc,
+		sessionManager: sessionManager,
+	}
+}
+
+// requireSelfOrAdmin checks if the current user is the same as the target user or has the admin role
+func requireSelfOrAdmin(r *http.Request, targetID uuid.UUID) bool {
+	userID, ok := common.UserIDFromContext(r.Context())
+	if !ok {
+		return false
+	}
+	if userID == targetID {
+		return true
+	}
+	role, _ := common.RoleFromContext(r.Context())
+	return role == "admin"
+}
 
 // GetMe handles GET /api/users/me
 func (h *UserHandler) GetMe(w http.ResponseWriter, r *http.Request) {
-	// Extract session_id cookie for logging
-	var sessionID string
-	if cookie, err := r.Cookie("session_id"); err == nil {
-		sessionID = cookie.Value
-	}
-	userID := session.GetUserID(r.Context())
-	if userID == "" {
-		log.Debug().Str("session_id", sessionID).Msg("GetMe: not authenticated, no userID in session")
-		session.ClearSession(w, r)
-		RespondError(w, http.StatusUnauthorized, "not authenticated: no userID in session")
+	userID, ok := common.UserIDFromContext(r.Context())
+	if !ok {
+		http.Error(w, "Invalid user ID", http.StatusBadRequest)
 		return
 	}
-	user, err := h.Service.GetUser(r.Context(), userID)
+	user, err := h.svc.GetUser(r.Context(), userID)
 	if err != nil {
-		log.Debug().Str("session_id", sessionID).Str("user_id", userID).Msg("GetMe: user not found")
-		RespondError(w, http.StatusNotFound, "user not found")
+		log.Debug().
+			Str("user_id", userID.String()).
+			Err(err).
+			Msg("GetMe: user not found")
+		http.Error(w, "User not found", http.StatusNotFound)
 		return
 	}
-	log.Debug().Str("session_id", sessionID).Str("user_id", userID).Msg("GetMe: user authenticated and found")
-	RespondJSON(w, http.StatusOK, user)
-}
-
-type UserHandler struct {
-	Service service.UserServiceInterface
+	log.Debug().
+		Str("user_id", userID.String()).
+		Msg("GetMe: user found")
+	json.NewEncoder(w).Encode(user)
 }
 
 // ListUsers handles GET /users
 // Only admin should be able to list all users
 func (h *UserHandler) ListUsers(w http.ResponseWriter, r *http.Request) {
-	RespondError(w, http.StatusForbidden, "forbidden")
+	role, _ := common.RoleFromContext(r.Context())
+	if role != "admin" {
+		http.Error(w, "Forbidden", http.StatusForbidden)
+		return
+	}
+	users, err := h.svc.ListUsers(r.Context())
+	if err != nil {
+		log.Error().
+			Err(err).
+			Msg("Failed to list users")
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	if err := json.NewEncoder(w).Encode(users); err != nil {
+		log.Error().
+			Err(err).
+			Msg("Failed to encode users")
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		return
+	}
 }
 
 // UpdateUser handles PUT /users/{id}
-// UpdateUser only allows updating safe fields (none in current model)
 func (h *UserHandler) UpdateUser(w http.ResponseWriter, r *http.Request) {
-	id, err := ValidateIDParam(r)
+	idStr := chi.URLParam(r, "id")
+	if idStr == "" {
+		http.Error(w, "Missing user ID", http.StatusBadRequest)
+		return
+	}
+	id, err := uuid.Parse(idStr)
 	if err != nil {
-		RespondError(w, http.StatusBadRequest, err.Error())
+		http.Error(w, "Invalid user ID", http.StatusBadRequest)
 		return
 	}
-	userIDVal := r.Context().Value(ContextUserIDKey)
-
-	userID, ok := userIDVal.(string)
-	if !ok || userID == "" {
-
-		RespondError(w, http.StatusUnauthorized, "not authenticated: no userID in context")
+	if !requireSelfOrAdmin(r, id) {
+		log.Debug().
+			Str("requested_id", id.String()).
+			Msg("UpdateUser: forbidden")
+		http.Error(w, "Forbidden", http.StatusForbidden)
 		return
 	}
-	if id != userID {
-		RespondError(w, http.StatusForbidden, "forbidden")
+	var user models.User
+	if err := json.NewDecoder(r.Body).Decode(&user); err != nil {
+		http.Error(w, "Invalid request body", http.StatusBadRequest)
 		return
 	}
-	var req struct {
-		// Add safe fields here if/when model expands
-	}
-	if err := DecodeJSON(r, &req); err != nil {
-		RespondError(w, http.StatusBadRequest, "invalid request body")
+	user.ID = id
+	if err := h.svc.UpdateUser(r.Context(), &user); err != nil {
+		http.Error(w, "Failed to update user", http.StatusInternalServerError)
 		return
 	}
-	// No updatable fields; respond with error
-	RespondError(w, http.StatusBadRequest, "no updatable fields")
+	json.NewEncoder(w).Encode(user)
 }
 
 // DeleteUser handles DELETE /users/{id}
-// DeleteUser performs a soft delete (deactivate)
 func (h *UserHandler) DeleteUser(w http.ResponseWriter, r *http.Request) {
-	id, err := ValidateIDParam(r)
+	idStr := chi.URLParam(r, "id")
+	if idStr == "" {
+		http.Error(w, "Missing user ID", http.StatusBadRequest)
+		return
+	}
+	id, err := uuid.Parse(idStr)
 	if err != nil {
-		RespondError(w, http.StatusBadRequest, err.Error())
+		http.Error(w, "Invalid user ID", http.StatusBadRequest)
 		return
 	}
-	userIDVal := r.Context().Value(ContextUserIDKey)
-
-	userID, ok := userIDVal.(string)
-	if !ok || userID == "" {
-
-		RespondError(w, http.StatusUnauthorized, "not authenticated: no userID in context")
+	if !requireSelfOrAdmin(r, id) {
+		log.Debug().
+			Str("requested_id", id.String()).
+			Msg("DeleteUser: forbidden")
+		http.Error(w, "Forbidden", http.StatusForbidden)
 		return
 	}
-	if id != userID {
-		RespondError(w, http.StatusForbidden, "forbidden")
-		return
-	}
-	err = h.Service.DeactivateUser(r.Context(), id)
-	if err != nil {
-		RespondError(w, http.StatusInternalServerError, err.Error())
+	if err := h.svc.DeactivateUser(r.Context(), id); err != nil {
+		log.Error().
+			Str("user_id", id.String()).
+			Err(err).
+			Msg("Failed to deactivate user")
+		http.Error(w, "Failed to deactivate user", http.StatusInternalServerError)
 		return
 	}
 	w.WriteHeader(http.StatusNoContent)
 }
 
-func NewUserHandler(svc service.UserServiceInterface) *UserHandler {
-	return &UserHandler{Service: svc}
-}
-
-// RequireSameUser is middleware that ensures the session user matches the {id} param
-func RequireSameUser(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		id := chi.URLParam(r, "id")
-		sessionUserID := session.GetUserID(r.Context())
-		if id == "" || sessionUserID == "" || id != sessionUserID {
-			RespondError(w, http.StatusForbidden, "forbidden")
-			return
-		}
-		next.ServeHTTP(w, r)
-	})
-}
-
-// GET /users/{id}
+// GetUser handles GET /users/{id}
 func (h *UserHandler) GetUser(w http.ResponseWriter, r *http.Request) {
-	id, err := ValidateIDParam(r)
+	idStr := chi.URLParam(r, "id")
+	if idStr == "" {
+		http.Error(w, "Missing user ID", http.StatusBadRequest)
+		return
+	}
+	id, err := uuid.Parse(idStr)
 	if err != nil {
-		RespondError(w, http.StatusBadRequest, err.Error())
+		http.Error(w, "Invalid user ID", http.StatusBadRequest)
 		return
 	}
-	userIDVal := r.Context().Value(ContextUserIDKey)
-
-	userID, ok := userIDVal.(string)
-	if !ok || userID == "" {
-
-		RespondError(w, http.StatusUnauthorized, "not authenticated: no userID in context")
+	if !requireSelfOrAdmin(r, id) {
+		log.Debug().
+			Str("requested_id", id.String()).
+			Msg("GetUser: forbidden")
+		http.Error(w, "Forbidden", http.StatusForbidden)
 		return
 	}
-	if id != userID {
-		RespondError(w, http.StatusForbidden, "forbidden")
-		return
-	}
-	user, err := h.Service.GetUser(r.Context(), id)
+	user, err := h.svc.GetUser(r.Context(), id)
 	if err != nil {
-		RespondError(w, http.StatusNotFound, err.Error())
+		log.Error().
+			Str("user_id", id.String()).
+			Err(err).
+			Msg("Failed to get user")
+		http.Error(w, "User not found", http.StatusNotFound)
 		return
 	}
-	RespondJSON(w, http.StatusOK, user)
+	json.NewEncoder(w).Encode(user)
 }
 
-// POST /users
+// CreateUser handles POST /users
 // Only admin should be able to create users directly
 func (h *UserHandler) CreateUser(w http.ResponseWriter, r *http.Request) {
-	RespondError(w, http.StatusForbidden, "forbidden")
+	http.Error(w, "Forbidden", http.StatusForbidden)
+}
+
+// RegisterUserRoutes adds the User API endpoints
+func RegisterUserRoutes(r chi.Router, sessionManager session.Manager, db *data.DB, oauthConfig *oauth2.Config) {
+	h := NewUserHandler(service.NewUserService(db), sessionManager)
+
+	// Define public paths
+	publicPaths := []string{
+		"/api/health/*", // Health check endpoints
+		"/api/auth/*",   // Authentication endpoints
+		"/api/docs/*",   // API documentation
+	}
+
+	// Create middleware chain
+	sessionMiddleware := middleware.NewSessionMiddleware(sessionManager, publicPaths...)
+	oauthMiddleware := middleware.NewOAuthMiddleware(sessionManager, db, oauthConfig)
+
+	// Apply middleware to routes
+	r.Group(func(r chi.Router) {
+		r.Use(sessionMiddleware.Handler)
+		r.Use(oauthMiddleware.Handler)
+		r.Get("/api/users/me", h.GetMe)
+		r.Get("/api/users", h.ListUsers)
+		r.Post("/api/users", h.CreateUser)
+		r.Get("/api/users/{id}", h.GetUser)
+		r.Put("/api/users/{id}", h.UpdateUser)
+		r.Delete("/api/users/{id}", h.DeleteUser)
+	})
 }
